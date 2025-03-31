@@ -49,13 +49,13 @@ export default function Home() {
                   </Link>
                 </div>
               </div>
-              <div className="left-[10rem] max-sm:left-0 relative">
+              <div className="relative">
                 <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-primary to-purple-600 opacity-75 blur"></div>
                 <div className="relative rounded-lg border bg-white p-4 shadow-lg">
                   <Image
                     src="/dashboard.jpeg"
-                    width={900}
-                    height={800}
+                    width={700}
+                    height={600}
                     alt="Dashboard Preview"
                     className="rounded-lg shadow-md max-sm:w-90 max-sm:h-50"
                   />
