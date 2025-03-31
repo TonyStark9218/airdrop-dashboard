@@ -49,22 +49,22 @@ export default function Home() {
                   </Link>
                 </div>
               </div>
-              <div className="left-[18rem] max-sm:left-[13rem] relative">
+              <div className="left-[10rem] max-sm:left-0 relative">
                 <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-primary to-purple-600 opacity-75 blur"></div>
                 <div className="relative rounded-lg border bg-white p-4 shadow-lg">
                   <Image
-                    src="/dashboard.JPEG"
-                    width={800}
-                    height={600}
+                    src="/dashboard.jpeg"
+                    width={900}
+                    height={800}
                     alt="Dashboard Preview"
-                    className="rounded-lg shadow-md max-sm:w-80 max-sm:h-60"
+                    className="rounded-lg shadow-md max-sm:w-90 max-sm:h-50"
                   />
                 </div>
               </div>
             </div>
           </div>
         </section>
-        <section className="w-full ml-[7rem] max-sm:ml-0 py-12 md:py-24 lg:py-32 bg-gray-50">
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-50">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
