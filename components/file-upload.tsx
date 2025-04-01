@@ -2,11 +2,10 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import Image from "next/image"
 import { Upload, X } from "lucide-react"
 
 interface FileUploadProps {
@@ -19,14 +18,30 @@ interface FileUploadProps {
 }
 
 export function FileUpload({ id, label, value, onChange, accept = "image/*", helpText }: FileUploadProps) {
-  const [preview, setPreview] = useState<string | null>(value ? URL.createObjectURL(value) : null)
+  const [preview, setPreview] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Create a preview when a file is selected
+  useEffect(() => {
+    if (!value) {
+      setPreview(null)
+      return
+    }
+
+    // Create a local object URL for the file
+    const objectUrl = URL.createObjectURL(value)
+    setPreview(objectUrl)
+
+    // Clean up the object URL when the component unmounts or when the file changes
+    return () => {
+      URL.revokeObjectURL(objectUrl)
+    }
+  }, [value])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0]
       onChange(file)
-      setPreview(URL.createObjectURL(file))
     }
   }
 
@@ -78,7 +93,7 @@ export function FileUpload({ id, label, value, onChange, accept = "image/*", hel
         <div className="mt-2">
           <p className="text-sm text-gray-400 mb-2">Preview:</p>
           <div className="relative h-40 w-full border border-gray-700 rounded bg-[#0f1623]">
-            <Image src={preview || "/placeholder.svg"} alt="Preview" fill className="object-contain" unoptimized />
+            <img src={preview || "/placeholder.svg"} alt="Preview" className="h-full w-full object-contain" />
           </div>
         </div>
       )}

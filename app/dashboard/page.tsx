@@ -57,6 +57,6 @@ async function AirdropContent({ userId }: { userId: string }) {
     )
   }
 
-  return <AirdropTable airdrops={airdrops} />
+  return <AirdropTable airdrops={airdrops}  />
 }
 

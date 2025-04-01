@@ -10,35 +10,37 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { createAirdrop } from "@/lib/airdrop-actions"
+import { updateAirdrop } from "@/lib/airdrop-actions"
 import { Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 import { FileUpload } from "@/components/file-upload"
+import type { AirdropDocument } from "@/lib/models/airdrop"
 
-interface AddAirdropFormProps {
+interface EditAirdropFormProps {
+  airdrop: AirdropDocument
   userId: string
 }
 
-export function AddAirdropForm({ userId }: AddAirdropFormProps) {
+export function EditAirdropForm({ airdrop, userId }: EditAirdropFormProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
-  const [twitterPreview, setTwitterPreview] = useState<string | null>(null)
+  const [twitterPreview, setTwitterPreview] = useState<string | null>(airdrop.airdropImageUrl || null)
   const [isLoadingTwitterPreview, setIsLoadingTwitterPreview] = useState(false)
-  const [showFaucetField, setShowFaucetField] = useState(false)
+  const [showFaucetField, setShowFaucetField] = useState(airdrop.type === "testnet")
   const [guideImageBase64, setGuideImageBase64] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
-    name: "",
-    type: "testnet" as "testnet" | "daily" | "quest" | "node" | "retro",
-    chain: "ethereum" as "ethereum" | "solana" | "avax" | "bnb" | "other",
-    twitterLink: "",
-    discordLink: "",
-    airdropLink: "",
-    faucetLink: "",
-    description: "",
+    name: airdrop.name,
+    type: airdrop.type,
+    chain: airdrop.chain || "ethereum",
+    twitterLink: airdrop.twitterLink,
+    discordLink: airdrop.discordLink,
+    airdropLink: airdrop.airdropLink || "",
+    faucetLink: airdrop.faucetLink || "",
+    description: airdrop.description || "",
     guideImage: null as File | null,
   })
 
@@ -104,6 +106,7 @@ export function AddAirdropForm({ userId }: AddAirdropFormProps) {
     setError("")
 
     const formDataToSend = new FormData()
+    formDataToSend.append("airdropId", airdrop._id.toString())
     formDataToSend.append("userId", userId)
     formDataToSend.append("name", formData.name)
     formDataToSend.append("type", formData.type)
@@ -128,24 +131,38 @@ export function AddAirdropForm({ userId }: AddAirdropFormProps) {
       formDataToSend.append("guideImageBase64", guideImageBase64)
       formDataToSend.append("guideImageName", formData.guideImage.name)
       formDataToSend.append("guideImageType", formData.guideImage.type)
+    } else if (airdrop.guideImageUrl) {
+      // Keep the existing guide image if no new one is uploaded
+      formDataToSend.append("guideImageUrl", airdrop.guideImageUrl)
     }
 
     try {
-      await createAirdrop(formDataToSend)
-      toast({
-        title: "Success!",
-        description: "Airdrop added successfully",
-        variant: "default",
-      })
-      router.push("/dashboard")
+      const result = await updateAirdrop(formDataToSend)
+
+      if (result.success) {
+        toast({
+          title: "Success!",
+          description: "Airdrop updated successfully",
+          variant: "default",
+        })
+        router.push("/dashboard")
+      } else {
+        setError(result.message || "Failed to update airdrop")
+        toast({
+          title: "Error",
+          description: result.message || "Failed to update airdrop",
+          variant: "destructive",
+        })
+      }
     } catch (error) {
-      console.error("Add airdrop error:", error)
-      setError("An error occurred while adding the airdrop")
+      console.error("Update airdrop error:", error)
+      setError("An error occurred while updating the airdrop")
       toast({
         title: "Error",
-        description: "An error occurred while adding the airdrop",
+        description: "An error occurred while updating the airdrop",
         variant: "destructive",
       })
+    } finally {
       setIsSubmitting(false)
     }
   }
@@ -364,10 +381,10 @@ export function AddAirdropForm({ userId }: AddAirdropFormProps) {
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding...
+                  Updating...
                 </>
               ) : (
-                "Add Airdrop"
+                "Update Airdrop"
               )}
             </Button>
           </div>
