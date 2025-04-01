@@ -46,21 +46,29 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
 
   // Check for airdrops that need to be reset (completed more than 24 hours ago)
   useEffect(() => {
+    // Function to check and reset completion status based on time
     const checkCompletionStatus = () => {
       const now = new Date()
       const updatedAirdrops = localAirdrops.map((airdrop) => {
         if (airdrop.completed) {
-          // Check if the airdrop was completed more than 24 hours ago
-          // For this to work properly, we would need a completedAt timestamp
-          // Since we don't have that, we'll use a simulated approach for now
-          const completedAt = airdrop.updatedAt || airdrop.createdAt
-          const completedDate = new Date(completedAt)
-          const hoursSinceCompletion = (now.getTime() - completedDate.getTime()) / (1000 * 60 * 60)
+          // Get the timestamp when the airdrop was marked as completed
+          const completedAt = new Date(airdrop.updatedAt || airdrop.createdAt)
 
-          // If it's been more than 24 hours, reset the status
+          // Calculate time difference in hours
+          const hoursSinceCompletion = (now.getTime() - completedAt.getTime()) / (1000 * 60 * 60)
+
+          // If it's been more than 24 hours since completion, reset to incomplete
           if (hoursSinceCompletion >= 24) {
+            console.log(`Resetting airdrop ${airdrop.name} - completed ${hoursSinceCompletion.toFixed(1)} hours ago`)
             return { ...airdrop, completed: false }
           }
+
+          // For demonstration purposes, we'll also show when it will reset
+          const resetTime = new Date(completedAt.getTime() + 24 * 60 * 60 * 1000)
+          const hoursUntilReset = (resetTime.getTime() - now.getTime()) / (1000 * 60 * 60)
+          console.log(
+            `Airdrop ${airdrop.name} will reset in ${hoursUntilReset.toFixed(1)} hours (${resetTime.toLocaleTimeString()})`,
+          )
         }
         return airdrop
       })
@@ -70,7 +78,9 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
 
       if (hasChanges) {
         setLocalAirdrops(updatedAirdrops)
+
         // In a real app, you would also update the database here
+        // For now, we'll just show a toast notification
         toast({
           title: "Status updated",
           description: "Some airdrops have been automatically reset after 24 hours",
@@ -81,8 +91,9 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
     // Check on initial load
     checkCompletionStatus()
 
-    // Set up interval to check every hour
-    const intervalId = setInterval(checkCompletionStatus, 60 * 60 * 1000)
+    // Set up interval to check every minute (for demo purposes)
+    // In production, you might want to check less frequently (e.g., every 5-15 minutes)
+    const intervalId = setInterval(checkCompletionStatus, 60 * 1000)
 
     // Clean up interval on unmount
     return () => clearInterval(intervalId)
@@ -129,47 +140,59 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
 
   // Handle toggle completion
   const handleToggleCompletion = async (airdropId: string) => {
-    setIsLoading((prev) => ({ ...prev, [airdropId]: true }))
-
+    setIsLoading((prev) => ({ ...prev, [airdropId]: true }));
+  
     try {
-      const result = await toggleAirdropCompletion(airdropId)
-
+      const result = await toggleAirdropCompletion(airdropId);
+  
       if (result.success) {
-        // Update local state to avoid a full page refresh
+        const currentAirdrop = localAirdrops.find((airdrop) => airdrop._id.toString() === airdropId);
+        const isCurrentlyCompleted = currentAirdrop?.completed || false;
+        const now = new Date();
+  
         setLocalAirdrops((prev) =>
           prev.map((airdrop) =>
             airdrop._id.toString() === airdropId
               ? {
                   ...airdrop,
-                  completed: !airdrop.completed,
-                  updatedAt: new Date(), // Use Date object instead of string
+                  completed: !isCurrentlyCompleted,
+                  completedAt: !isCurrentlyCompleted ? now : undefined, // Set completedAt saat selesai
+                  updatedAt: now, // Tetap sebagai Date
                 }
               : airdrop,
           ),
-        )
-
-        toast({
-          title: "Status updated",
-          description: "Airdrop status has been updated",
-        })
+        );
+  
+        if (!isCurrentlyCompleted) {
+          const resetTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+          toast({
+            title: "Ditandai sebagai selesai",
+            description: `Airdrop ini akan direset otomatis pada ${resetTime.toLocaleTimeString()} besok`,
+          });
+        } else {
+          toast({
+            title: "Ditandai sebagai belum selesai",
+            description: "Status airdrop telah diperbarui",
+          });
+        }
       } else {
         toast({
           title: "Error",
-          description: result.message || "Failed to update status",
+          description: result.message || "Gagal memperbarui status",
           variant: "destructive",
-        })
+        });
       }
     } catch (error) {
-      console.error("Error toggling completion:", error)
+      console.error("Error saat mengubah status:", error);
       toast({
         title: "Error",
-        description: "An error occurred while updating the status",
+        description: "Terjadi kesalahan saat memperbarui status",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsLoading((prev) => ({ ...prev, [airdropId]: false }))
+      setIsLoading((prev) => ({ ...prev, [airdropId]: false }));
     }
-  }
+  };
 
   // Handle delete airdrop
   const handleDeleteAirdrop = async (airdropId: string) => {

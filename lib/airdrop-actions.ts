@@ -32,6 +32,28 @@ export async function getAirdrops(userId: string): Promise<AirdropDocument[]> {
   }
 }
 
+export async function getAllAirdrops(query: string): Promise<AirdropDocument[]> {
+  try {
+    await connectToDatabase()
+
+    // Create a case-insensitive search regex
+    const searchRegex = new RegExp(query, "i")
+
+    // Search across multiple fields
+    const airdrops = (await Airdrop.find({
+      $or: [{ name: searchRegex }, { type: searchRegex }, { chain: searchRegex }, { description: searchRegex }],
+    })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean()) as AirdropDocument[]
+
+    return airdrops
+  } catch (error) {
+    console.error("Error searching airdrops:", error)
+    return []
+  }
+}
+
 export async function getAirdropById(airdropId: string): Promise<AirdropDocument | null> {
   try {
     await connectToDatabase()
@@ -117,8 +139,6 @@ export async function createAirdrop(formData: FormData) {
 
     // Get guide image data
     const guideImageBase64 = formData.get("guideImageBase64") as string
-    // const guideImageName = formData.get("guideImageName") as string
-    // const guideImageType = formData.get("guideImageType") as string
 
     // Get airdrop image URL from Twitter
     let airdropImageUrl = formData.get("airdropImageUrl") as string
@@ -199,8 +219,6 @@ export async function updateAirdrop(formData: FormData) {
 
     // Get guide image data
     const guideImageBase64 = formData.get("guideImageBase64") as string
-    // const guideImageName = formData.get("guideImageName") as string
-    // const guideImageType = formData.get("guideImageType") as string
     const existingGuideImageUrl = formData.get("guideImageUrl") as string
 
     await connectToDatabase()
@@ -249,6 +267,54 @@ export async function updateAirdrop(formData: FormData) {
   }
 }
 
+// Clone an airdrop from another user
+export async function cloneAirdrop({ airdropId, userId }: { airdropId: string; userId: string }) {
+  try {
+    await connectToDatabase()
+
+    // Find the original airdrop
+    const originalAirdrop = await Airdrop.findById(airdropId)
+    if (!originalAirdrop) {
+      return { success: false, message: "Airdrop not found" }
+    }
+
+    // Check if user already has this airdrop
+    const existingAirdrop = await Airdrop.findOne({
+      userId,
+      name: originalAirdrop.name,
+      twitterLink: originalAirdrop.twitterLink,
+    })
+
+    if (existingAirdrop) {
+      return { success: false, message: "You already have this airdrop in your dashboard" }
+    }
+
+    // Create a new airdrop based on the original
+    const newAirdrop = new Airdrop({
+      userId,
+      name: originalAirdrop.name,
+      type: originalAirdrop.type,
+      chain: originalAirdrop.chain,
+      twitterLink: originalAirdrop.twitterLink,
+      discordLink: originalAirdrop.discordLink,
+      airdropLink: originalAirdrop.airdropLink,
+      faucetLink: originalAirdrop.faucetLink,
+      description: originalAirdrop.description,
+      airdropImageUrl: originalAirdrop.airdropImageUrl,
+      guideImageUrl: originalAirdrop.guideImageUrl,
+      completed: false,
+    })
+
+    await newAirdrop.save()
+
+    revalidatePath("/dashboard")
+    return { success: true }
+  } catch (error) {
+    console.error("Error cloning airdrop:", error)
+    return { success: false, message: "An error occurred while adding the airdrop" }
+  }
+}
+
 // Toggle completion status
 export async function toggleAirdropCompletion(airdropId: string) {
   try {
@@ -259,8 +325,13 @@ export async function toggleAirdropCompletion(airdropId: string) {
       return { success: false, message: "Airdrop not found" }
     }
 
+    // Toggle completion status
     airdrop.completed = !airdrop.completed
+
+    // Store the exact timestamp when the status was changed
     airdrop.updatedAt = new Date()
+
+    // Save the changes
     await airdrop.save()
 
     revalidatePath("/dashboard")

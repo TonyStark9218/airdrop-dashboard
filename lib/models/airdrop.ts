@@ -14,7 +14,9 @@ export interface IAirdrop extends Document {
   airdropImageUrl?: string
   guideImageUrl?: string
   completed?: boolean
+  completedAt?: Date // Add this field to track when an airdrop was completed
   createdAt: Date
+  updatedAt: Date
 }
 
 // This interface represents the plain object returned from lean()
@@ -32,6 +34,7 @@ export interface AirdropDocument {
   airdropImageUrl?: string
   guideImageUrl?: string
   completed?: boolean
+  completedAt?: Date // Add this field to track when an airdrop was completed
   createdAt: Date
   updatedAt: Date
   __v: number
@@ -82,6 +85,9 @@ const AirdropSchema = new Schema<IAirdrop>(
     completed: {
       type: Boolean,
       default: false,
+    },
+    completedAt: {
+      type: Date,
     },
   },
   {
