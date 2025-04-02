@@ -120,7 +120,7 @@ export function SidebarNav({ username }: SidebarNavProps) {
                         "relative overflow-hidden transition-all",
                         isActive
                           ? "bg-gradient-to-r from-blue-600/20 to-purple-600/20 text-white font-medium"
-                          : "text-gray-400 hover:text-white",
+                          : "text-gray-400 hover:text-gray-600",
                       )}
                     >
                       <Link href={route.href} className="flex items-center gap-2">
