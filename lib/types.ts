@@ -23,3 +23,27 @@ export interface Session {
   username: string
 }
 
+export interface ChatRoomData {
+  _id: string
+  name: string
+  description: string
+  topic: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface MessageData {
+  _id: string
+  roomId: string
+  senderId: string
+  senderUsername: string
+  content: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface UserSearchResult {
+  _id: string
+  username: string
+}
+

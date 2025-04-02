@@ -29,7 +29,6 @@ import { logoutUser } from "@/lib/auth-actions"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-import { Badge } from "@/components/ui/badge"
 
 interface SidebarNavProps {
   username: string
@@ -121,7 +120,7 @@ export function SidebarNav({ username }: SidebarNavProps) {
                         "relative overflow-hidden transition-all",
                         isActive
                           ? "bg-gradient-to-r from-blue-600/20 to-purple-600/20 text-white font-medium"
-                          : "text-gray-400 hover:text-gray-600",
+                          : "text-gray-400 hover:text-white",
                       )}
                     >
                       <Link href={route.href} className="flex items-center gap-2">
@@ -158,16 +157,10 @@ export function SidebarNav({ username }: SidebarNavProps) {
               variant="ghost"
               size="sm"
               className="flex-1 justify-start text-gray-400 hover:text-white hover:bg-gray-800 relative"
-              onClick={() =>
-                toast({
-                  title: "Coming Soon",
-                  description: "Settings feature is not available yet",
-                })
-              }
+              onClick={() => router.push("/dashboard/settings")}
             >
               <Settings className="mr-2 h-4 w-4" />
               Settings
-              <Badge className="ml-2 bg-yellow-600 text-[10px] py-0 px-1.5 absolute right-2">Coming Soon</Badge>
             </Button>
             <Button
               variant="ghost"
