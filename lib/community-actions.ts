@@ -1,19 +1,18 @@
-"use server"
+"use server";
 
-import { connectToDatabase } from "./db"
-import { ChatRoom } from "./models/chatroom"
-import { Message } from "./models/message"
-import { User } from "./models/user"
-import { revalidatePath } from "next/cache"
-import type { ChatRoomData, MessageData, UserSearchResult } from "./types"
+import { connectToDatabase } from "./db";
+import { ChatRoom } from "./models/chatroom";
+import { Message } from "./models/message";
+import { User } from "./models/user";
+import { revalidatePath } from "next/cache";
+import type { ChatRoomData, MessageData, UserSearchResult } from "./types";
 
 // Get all chat rooms
 export async function getChatRooms(): Promise<ChatRoomData[]> {
   try {
-    await connectToDatabase()
-    const chatRooms = await ChatRoom.find().sort({ updatedAt: -1 }).lean()
+    await connectToDatabase();
+    const chatRooms = await ChatRoom.find().sort({ updatedAt: -1 }).lean();
 
-    // Convert MongoDB documents to plain objects with string IDs
     return chatRooms.map((room) => ({
       _id: String(room._id),
       name: room.name,
@@ -21,20 +20,19 @@ export async function getChatRooms(): Promise<ChatRoomData[]> {
       topic: room.topic,
       createdAt: room.createdAt instanceof Date ? room.createdAt : new Date(room.createdAt),
       updatedAt: room.updatedAt instanceof Date ? room.updatedAt : new Date(room.updatedAt),
-    }))
+    }));
   } catch (error) {
-    console.error("Error fetching chat rooms:", error)
-    return []
+    console.error("Error fetching chat rooms:", error);
+    return [];
   }
 }
 
 // Get messages for a specific chat room
 export async function getChatMessages(roomId: string): Promise<MessageData[]> {
   try {
-    await connectToDatabase()
-    const messages = await Message.find({ roomId }).sort({ createdAt: 1 }).limit(100).lean()
+    await connectToDatabase();
+    const messages = await Message.find({ roomId }).sort({ createdAt: 1 }).limit(100).lean();
 
-    // Convert MongoDB documents to plain objects with string IDs
     return messages.map((message) => ({
       _id: String(message._id),
       roomId: String(message.roomId),
@@ -43,70 +41,80 @@ export async function getChatMessages(roomId: string): Promise<MessageData[]> {
       content: message.content,
       createdAt: message.createdAt instanceof Date ? message.createdAt : new Date(message.createdAt),
       updatedAt: message.updatedAt instanceof Date ? message.updatedAt : new Date(message.updatedAt),
-    }))
+    }));
   } catch (error) {
-    console.error("Error fetching chat messages:", error)
-    return []
+    console.error("Error fetching chat messages:", error);
+    return [];
   }
 }
 
 // Send a message to a chat room
 export async function sendMessage(roomId: string, senderId: string, senderUsername: string, content: string) {
   try {
-    await connectToDatabase()
+    await connectToDatabase();
 
     const message = new Message({
       roomId,
       senderId,
       senderUsername,
       content,
-    })
+    });
 
-    await message.save()
+    const savedMessage = await message.save();
 
-    // Update the chat room's updatedAt timestamp
-    await ChatRoom.findByIdAndUpdate(roomId, { updatedAt: new Date() })
+    await ChatRoom.findByIdAndUpdate(roomId, { updatedAt: new Date() });
 
-    revalidatePath(`/dashboard/community/chat/${roomId}`)
-    return { success: true }
+    revalidatePath(`/dashboard/community/chat/${roomId}`);
+
+    return {
+      success: true,
+      message: {
+        _id: String(savedMessage._id),
+        roomId: String(savedMessage.roomId),
+        senderId: savedMessage.senderId,
+        senderUsername: savedMessage.senderUsername,
+        content: savedMessage.content,
+        createdAt: savedMessage.createdAt instanceof Date ? savedMessage.createdAt : new Date(savedMessage.createdAt),
+        updatedAt: savedMessage.updatedAt instanceof Date ? savedMessage.updatedAt : new Date(savedMessage.updatedAt),
+      },
+    };
   } catch (error) {
-    console.error("Error sending message:", error)
-    return { success: false, message: "Failed to send message" }
+    console.error("Error sending message:", error);
+    return { success: false, message: "Failed to send message" };
   }
 }
 
 // Update typing status
 export async function updateTypingStatus(roomId: string, userId: string, username: string, isTyping: boolean) {
   try {
-    await connectToDatabase()
+    await connectToDatabase();
 
-    // Make a POST request to the API endpoint to update typing status
     const response = await fetch(`/api/chat/${roomId}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ userId, username, isTyping }),
-    })
+    });
 
     if (!response.ok) {
-      throw new Error("Failed to update typing status")
+      throw new Error("Failed to update typing status");
     }
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    console.error("Error updating typing status:", error)
-    return { success: false }
+    console.error("Error updating typing status:", error);
+    return { success: false };
   }
 }
 
 // Search for users
 export async function searchUsers(query: string) {
   try {
-    await connectToDatabase()
+    await connectToDatabase();
 
     if (!query || query.length < 2) {
-      return { success: true, users: [] }
+      return { success: true, users: [] };
     }
 
     const users = await User.find({
@@ -114,27 +122,26 @@ export async function searchUsers(query: string) {
     })
       .select("_id username")
       .limit(10)
-      .lean()
+      .lean();
 
-    // Convert MongoDB documents to plain objects with string IDs
     const formattedUsers: UserSearchResult[] = users.map((user) => ({
       _id: String(user._id),
       username: user.username,
-    }))
+    }));
 
-    return { success: true, users: formattedUsers }
+    return { success: true, users: formattedUsers };
   } catch (error) {
-    console.error("Error searching users:", error)
-    return { success: false, message: "Failed to search users", users: [] }
+    console.error("Error searching users:", error);
+    return { success: false, message: "Failed to search users", users: [] };
   }
 }
 
 // Initialize default chat rooms if none exist
 export async function initializeChatRooms() {
   try {
-    await connectToDatabase()
+    await connectToDatabase();
 
-    const count = await ChatRoom.countDocuments()
+    const count = await ChatRoom.countDocuments();
 
     if (count === 0) {
       const defaultRooms = [
@@ -158,53 +165,50 @@ export async function initializeChatRooms() {
           description: "Daily tasks and quests for various crypto projects",
           topic: "daily",
         },
-      ]
+      ];
 
-      await ChatRoom.insertMany(defaultRooms)
+      await ChatRoom.insertMany(defaultRooms);
     }
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    console.error("Error initializing chat rooms:", error)
-    return { success: false }
+    console.error("Error initializing chat rooms:", error);
+    return { success: false };
   }
 }
 
 // Update user profile
 export async function updateUserProfile(userId: string, data: { username?: string; password?: string }) {
   try {
-    await connectToDatabase()
+    await connectToDatabase();
 
-    // Check if username is taken (if changing username)
     if (data.username) {
       const existingUser = await User.findOne({
         username: data.username,
-        _id: { $ne: userId }, // Exclude current user
-      })
+        _id: { $ne: userId },
+      });
 
       if (existingUser) {
         return {
           success: false,
           message: "Username is already taken",
-        }
+        };
       }
     }
 
-    // Update user
-    const updateData: Record<string, string> = {}
-    if (data.username) updateData.username = data.username
-    if (data.password) updateData.password = data.password
+    const updateData: Record<string, string> = {};
+    if (data.username) updateData.username = data.username;
+    if (data.password) updateData.password = data.password;
 
-    await User.findByIdAndUpdate(userId, updateData)
+    await User.findByIdAndUpdate(userId, updateData);
 
-    revalidatePath("/dashboard/settings")
-    return { success: true }
+    revalidatePath("/dashboard/settings");
+    return { success: true };
   } catch (error) {
-    console.error("Error updating user profile:", error)
+    console.error("Error updating user profile:", error);
     return {
       success: false,
       message: "Failed to update profile",
-    }
+    };
   }
 }
-
