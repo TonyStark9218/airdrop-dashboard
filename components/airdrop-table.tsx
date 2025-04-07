@@ -139,60 +139,74 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
   }
 
   // Handle toggle completion
-  const handleToggleCompletion = async (airdropId: string) => {
-    setIsLoading((prev) => ({ ...prev, [airdropId]: true }));
-  
+  const handleToggleCompletion = async (airdropId: string, forceComplete = false) => {
+    setIsLoading((prev) => ({ ...prev, [airdropId]: true }))
+
     try {
-      const result = await toggleAirdropCompletion(airdropId);
-  
-      if (result.success) {
-        const currentAirdrop = localAirdrops.find((airdrop) => airdrop._id.toString() === airdropId);
-        const isCurrentlyCompleted = currentAirdrop?.completed || false;
-        const now = new Date();
-  
-        setLocalAirdrops((prev) =>
-          prev.map((airdrop) =>
-            airdrop._id.toString() === airdropId
-              ? {
-                  ...airdrop,
-                  completed: !isCurrentlyCompleted,
-                  completedAt: !isCurrentlyCompleted ? now : undefined, // Set completedAt saat selesai
-                  updatedAt: now, // Tetap sebagai Date
-                }
-              : airdrop,
-          ),
-        );
-  
-        if (!isCurrentlyCompleted) {
-          const resetTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      // Jika forceComplete true, kita akan memaksa status menjadi completed
+      // Jika tidak, kita akan toggle status seperti biasa
+      const currentAirdrop = localAirdrops.find((airdrop) => airdrop._id.toString() === airdropId)
+      const isCurrentlyCompleted = currentAirdrop?.completed || false
+
+      // Hanya kirim request ke server jika status akan berubah
+      if (forceComplete !== isCurrentlyCompleted) {
+        const result = await toggleAirdropCompletion(airdropId, forceComplete)
+
+        if (!result.success) {
           toast({
-            title: "Ditandai sebagai selesai",
-            description: `Airdrop ini akan direset otomatis pada ${resetTime.toLocaleTimeString()} besok`,
-          });
-        } else {
-          toast({
-            title: "Ditandai sebagai belum selesai",
-            description: "Status airdrop telah diperbarui",
-          });
+            title: "Error",
+            description: result.message || "Gagal memperbarui status",
+            variant: "destructive",
+          })
+          setIsLoading((prev) => ({ ...prev, [airdropId]: false }))
+          return
         }
-      } else {
+      }
+
+      const now = new Date()
+
+      setLocalAirdrops((prev) =>
+        prev.map((airdrop) =>
+          airdrop._id.toString() === airdropId
+            ? {
+                ...airdrop,
+                completed: forceComplete !== undefined ? forceComplete : !isCurrentlyCompleted,
+                completedAt: forceComplete || (!isCurrentlyCompleted && forceComplete === undefined) ? now : undefined,
+                updatedAt: now,
+              }
+            : airdrop,
+        ),
+      )
+
+      if (forceComplete || (!isCurrentlyCompleted && forceComplete === undefined)) {
+        const resetTime = new Date(now.getTime() + 24 * 60 * 60 * 1000)
         toast({
-          title: "Error",
-          description: result.message || "Gagal memperbarui status",
-          variant: "destructive",
-        });
+          title: "Ditandai sebagai selesai",
+          description: `Airdrop ini akan direset otomatis pada ${resetTime.toLocaleTimeString()} besok`,
+        })
+      } else if (!forceComplete && (isCurrentlyCompleted || forceComplete === false)) {
+        toast({
+          title: "Ditandai sebagai belum selesai",
+          description: "Status airdrop telah diperbarui",
+        })
       }
     } catch (error) {
-      console.error("Error saat mengubah status:", error);
+      console.error("Error saat mengubah status:", error)
       toast({
         title: "Error",
         description: "Terjadi kesalahan saat memperbarui status",
         variant: "destructive",
-      });
+      })
     } finally {
-      setIsLoading((prev) => ({ ...prev, [airdropId]: false }));
+      setIsLoading((prev) => ({ ...prev, [airdropId]: false }))
     }
-  };
+  }
+
+  // Tambahkan fungsi baru untuk menangani klik pada Airdrop Link
+  const handleAirdropLinkClick = (airdropId: string) => {
+    // Tandai sebagai selesai
+    handleToggleCompletion(airdropId, true)
+  }
 
   // Handle delete airdrop
   const handleDeleteAirdrop = async (airdropId: string) => {
@@ -311,6 +325,14 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-400 hover:text-blue-300"
+                        onClick={(e) => {
+                          // Prevent default to handle our custom logic first
+                          e.preventDefault()
+                          // Mark as completed
+                          handleAirdropLinkClick(airdropId)
+                          // Then open the link
+                          window.open(airdrop.airdropLink, "_blank", "noopener,noreferrer")
+                        }}
                       >
                         <Button
                           variant="ghost"

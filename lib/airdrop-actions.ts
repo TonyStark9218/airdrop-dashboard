@@ -315,8 +315,8 @@ export async function cloneAirdrop({ airdropId, userId }: { airdropId: string; u
   }
 }
 
-// Toggle completion status
-export async function toggleAirdropCompletion(airdropId: string) {
+// Ubah fungsi toggleAirdropCompletion untuk menerima parameter forceValue
+export async function toggleAirdropCompletion(airdropId: string, forceValue?: boolean) {
   try {
     await connectToDatabase()
 
@@ -325,11 +325,19 @@ export async function toggleAirdropCompletion(airdropId: string) {
       return { success: false, message: "Airdrop not found" }
     }
 
-    // Toggle completion status
-    airdrop.completed = !airdrop.completed
+    // Toggle completion status or set to forced value if provided
+    airdrop.completed = forceValue !== undefined ? forceValue : !airdrop.completed
 
     // Store the exact timestamp when the status was changed
     airdrop.updatedAt = new Date()
+
+    // If marking as completed, set completedAt
+    if (airdrop.completed) {
+      airdrop.completedAt = new Date()
+    } else {
+      // If marking as not completed, remove completedAt
+      airdrop.completedAt = undefined
+    }
 
     // Save the changes
     await airdrop.save()
