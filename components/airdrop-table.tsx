@@ -429,11 +429,11 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
                           <FileText className="h-4 w-4" />
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-[500px] bg-[#1a1f2e] border-gray-700">
+                      <DialogContent className="sm:max-w-[700px] bg-[#1a1f2e] border-gray-700">
                         <DialogHeader>
                           <DialogTitle className="text-white">{selectedAirdrop?.name} - Notes</DialogTitle>
                         </DialogHeader>
-                        <div className="mt-4 text-gray-200 whitespace-pre-wrap p-4 bg-[#0f1623] rounded-md">
+                        <div className="mt-4 text-gray-200 whitespace-pre-wrap p-4 bg-[#0f1623] rounded-md max-h-[400px] overflow-y-auto">
                           {selectedAirdrop?.description || "No description available."}
                         </div>
                       </DialogContent>
@@ -574,4 +574,3 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
     </div>
   )
 }
-
