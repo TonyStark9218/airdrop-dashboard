@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Plus, BarChart3, Wallet, Coins, ArrowUpRight } from "lucide-react"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { DashboardControls } from "@/components/dashboard-controls"
 
 export default async function DashboardPage() {
   const session = await getSession()
@@ -33,112 +34,141 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-[#1a1f2e] border-gray-700 hover:border-gray-600 transition-all duration-300 overflow-hidden">
-          <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-600/10 to-purple-600/10 rounded-bl-full"></div>
-          <CardHeader className="pb-2">
-            <CardDescription className="text-gray-400">Total Airdrops</CardDescription>
-            <CardTitle className="text-2xl text-white flex items-baseline">
-              24
-              <span className="ml-2 text-sm text-green-400 flex items-center">
-                +3
-                <ArrowUpRight className="h-3 w-3 ml-0.5" />
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-400">12 active, 12 completed</span>
-              <BarChart3 className="h-5 w-5 text-blue-400" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-[#1a1f2e] border-gray-700 hover:border-gray-600 transition-all duration-300 overflow-hidden">
-          <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-green-600/10 to-blue-600/10 rounded-bl-full"></div>
-          <CardHeader className="pb-2">
-            <CardDescription className="text-gray-400">Estimated Value</CardDescription>
-            <CardTitle className="text-2xl text-white flex items-baseline">
-              $1,240
-              <span className="ml-2 text-sm text-green-400 flex items-center">
-                +$120
-                <ArrowUpRight className="h-3 w-3 ml-0.5" />
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-400">Based on current market data</span>
-              <Wallet className="h-5 w-5 text-green-400" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-[#1a1f2e] border-gray-700 hover:border-gray-600 transition-all duration-300 overflow-hidden">
-          <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-600/10 to-pink-600/10 rounded-bl-full"></div>
-          <CardHeader className="pb-2">
-            <CardDescription className="text-gray-400">Completed Tasks</CardDescription>
-            <CardTitle className="text-2xl text-white flex items-baseline">
-              78%
-              <span className="ml-2 text-sm text-green-400 flex items-center">
-                +5%
-                <ArrowUpRight className="h-3 w-3 ml-0.5" />
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-400">18/24 tasks completed</span>
-              <div className="h-2 w-24 bg-gray-700 rounded-full overflow-hidden">
-                <div className="h-full w-[78%] bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"></div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-[#1a1f2e] border-gray-700 hover:border-gray-600 transition-all duration-300 overflow-hidden">
-          <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-yellow-600/10 to-red-600/10 rounded-bl-full"></div>
-          <CardHeader className="pb-2">
-            <CardDescription className="text-gray-400">Upcoming Airdrops</CardDescription>
-            <CardTitle className="text-2xl text-white flex items-baseline">
-              7<span className="ml-2 text-sm text-yellow-400 flex items-center">Next 7 days</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-400">3 high priority</span>
-              <Coins className="h-5 w-5 text-yellow-400" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Suspense fallback={<StatsCardsSkeleton />}>
+        <StatsCards userId={session.userId} />
+      </Suspense>
 
       <div className="bg-[#1a1f2e] border border-gray-700 rounded-lg p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-medium text-white">Your Airdrops</h2>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-transparent border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white"
-            >
-              Filter
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-transparent border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white"
-            >
-              Sort
-            </Button>
-          </div>
-        </div>
+        <Suspense fallback={<div className="h-12 animate-pulse bg-gray-800 rounded-md mb-6"></div>}>
+          <DashboardControls userId={session.userId} />
+        </Suspense>
 
         <Suspense fallback={<AirdropTableSkeleton />}>
           <AirdropContent userId={session.userId} />
         </Suspense>
       </div>
+    </div>
+  )
+}
+
+async function StatsCards({ userId }: { userId: string }) {
+  const airdrops = await getAirdrops(userId)
+
+  // Calculate stats
+  const totalAirdrops = airdrops.length
+  const completedAirdrops = airdrops.filter((airdrop) => airdrop.completed).length
+  const activeAirdrops = totalAirdrops - completedAirdrops
+  const completionPercentage = totalAirdrops > 0 ? Math.round((completedAirdrops / totalAirdrops) * 100) : 0
+
+  // Calculate upcoming airdrops (those added in the last 7 days)
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  const upcomingAirdrops = airdrops.filter((airdrop) => new Date(airdrop.createdAt) >= sevenDaysAgo).length
+
+  // Estimate value (this is a placeholder - you might want to implement your own logic)
+  const estimatedValue = completedAirdrops * 50 + activeAirdrops * 30 // Simple placeholder calculation
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <Card className="bg-[#1a1f2e] border-gray-700 hover:border-gray-600 transition-all duration-300 overflow-hidden">
+        <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-600/10 to-purple-600/10 rounded-bl-full"></div>
+        <CardHeader className="pb-2">
+          <CardDescription className="text-gray-400">Total Airdrops</CardDescription>
+          <CardTitle className="text-2xl text-white flex items-baseline">
+            {totalAirdrops}
+            <span className="ml-2 text-sm text-green-400 flex items-center">
+              +{upcomingAirdrops}
+              <ArrowUpRight className="h-3 w-3 ml-0.5" />
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-gray-400">
+              {activeAirdrops} active, {completedAirdrops} completed
+            </span>
+            <BarChart3 className="h-5 w-5 text-blue-400" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-[#1a1f2e] border-gray-700 hover:border-gray-600 transition-all duration-300 overflow-hidden">
+        <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-green-600/10 to-blue-600/10 rounded-bl-full"></div>
+        <CardHeader className="pb-2">
+          <CardDescription className="text-gray-400">Estimated Value</CardDescription>
+          <CardTitle className="text-2xl text-white flex items-baseline">
+            ${estimatedValue}
+            <span className="ml-2 text-sm text-green-400 flex items-center">
+              +${upcomingAirdrops * 20}
+              <ArrowUpRight className="h-3 w-3 ml-0.5" />
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-gray-400">Based on current market data</span>
+            <Wallet className="h-5 w-5 text-green-400" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-[#1a1f2e] border-gray-700 hover:border-gray-600 transition-all duration-300 overflow-hidden">
+        <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-600/10 to-pink-600/10 rounded-bl-full"></div>
+        <CardHeader className="pb-2">
+          <CardDescription className="text-gray-400">Completed Tasks</CardDescription>
+          <CardTitle className="text-2xl text-white flex items-baseline">
+            {completionPercentage}%
+            <span className="ml-2 text-sm text-green-400 flex items-center">
+              +{Math.round((upcomingAirdrops / totalAirdrops) * 100) || 0}%
+              <ArrowUpRight className="h-3 w-3 ml-0.5" />
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-gray-400">
+              {completedAirdrops}/{totalAirdrops} tasks completed
+            </span>
+            <div className="h-2 w-24 bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+                style={{ width: `${completionPercentage}%` }}
+              ></div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-[#1a1f2e] border-gray-700 hover:border-gray-600 transition-all duration-300 overflow-hidden">
+        <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-yellow-600/10 to-red-600/10 rounded-bl-full"></div>
+        <CardHeader className="pb-2">
+          <CardDescription className="text-gray-400">Upcoming Airdrops</CardDescription>
+          <CardTitle className="text-2xl text-white flex items-baseline">
+            {upcomingAirdrops}
+            <span className="ml-2 text-sm text-yellow-400 flex items-center">Next 7 days</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-gray-400">{Math.ceil(upcomingAirdrops / 3) || 0} high priority</span>
+            <Coins className="h-5 w-5 text-yellow-400" />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function StatsCardsSkeleton() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="bg-[#1a1f2e] border border-gray-700 rounded-lg p-6 h-[140px] animate-pulse">
+          <div className="h-4 bg-gray-800 rounded w-1/3 mb-4"></div>
+          <div className="h-6 bg-gray-800 rounded w-1/2 mb-4"></div>
+          <div className="h-4 bg-gray-800 rounded w-3/4"></div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -167,4 +197,3 @@ async function AirdropContent({ userId }: { userId: string }) {
 
   return <AirdropTable airdrops={airdrops} />
 }
-

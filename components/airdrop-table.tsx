@@ -33,6 +33,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 
 interface AirdropTableProps {
   airdrops: AirdropDocument[]
@@ -40,9 +41,78 @@ interface AirdropTableProps {
 
 export function AirdropTable({ airdrops }: AirdropTableProps) {
   const { toast } = useToast()
+  const searchParams = useSearchParams()
   const [localAirdrops, setLocalAirdrops] = useState<AirdropDocument[]>(airdrops)
+  const [filteredAirdrops, setFilteredAirdrops] = useState<AirdropDocument[]>(airdrops)
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({})
   const [selectedAirdrop, setSelectedAirdrop] = useState<AirdropDocument | null>(null)
+
+  // Apply search, filters, and sorting from URL params
+  useEffect(() => {
+    let result = [...localAirdrops]
+
+    // Apply search
+    const searchQuery = searchParams.get("search")
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      result = result.filter(
+        (airdrop) =>
+          airdrop.name.toLowerCase().includes(query) ||
+          (airdrop.description && airdrop.description.toLowerCase().includes(query)) ||
+          (airdrop.chain && airdrop.chain.toLowerCase().includes(query)) ||
+          (airdrop.type && airdrop.type.toLowerCase().includes(query)),
+      )
+    }
+
+    // Apply status filter
+    const statusFilter = searchParams.get("status")
+    if (statusFilter) {
+      if (statusFilter === "completed") {
+        result = result.filter((airdrop) => airdrop.completed)
+      } else if (statusFilter === "active") {
+        result = result.filter((airdrop) => !airdrop.completed)
+      }
+    }
+
+    // Apply chain filter
+    const chainFilter = searchParams.get("chain")
+    if (chainFilter) {
+      result = result.filter((airdrop) => (airdrop.chain || "ethereum").toLowerCase() === chainFilter.toLowerCase())
+    }
+
+    // Apply type filter
+    const typeFilter = searchParams.get("type")
+    if (typeFilter) {
+      result = result.filter((airdrop) => airdrop.type && airdrop.type.toLowerCase() === typeFilter.toLowerCase())
+    }
+
+    // Apply sorting
+    const sortBy = searchParams.get("sort") || "newest"
+    switch (sortBy) {
+      case "newest":
+        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        break
+      case "oldest":
+        result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        break
+      case "name-asc":
+        result.sort((a, b) => a.name.localeCompare(b.name))
+        break
+      case "name-desc":
+        result.sort((a, b) => b.name.localeCompare(a.name))
+        break
+      case "value-high":
+        // This is a placeholder - you might want to implement your own value logic
+        result.sort((a, b) => (b.completed ? 1 : 0) - (a.completed ? 1 : 0))
+        break
+      case "value-low":
+        // This is a placeholder - you might want to implement your own value logic
+        result.sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0))
+        break
+    }
+
+    setFilteredAirdrops(result)
+  }, [localAirdrops, searchParams])
 
   // Check for airdrops that need to be reset (completed more than 24 hours ago)
   useEffect(() => {
@@ -289,286 +359,296 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
           </tr>
         </thead>
         <tbody>
-          {localAirdrops.map((airdrop) => {
-            const chainInfo = getChainInfo(airdrop.chain)
-            const airdropId = airdrop._id.toString()
-            return (
-              <tr key={airdropId} className="border-b border-gray-700 hover:bg-[#1a1f2e]">
-                <td className="px-4 py-3 flex items-center gap-3">
-                  <div className="relative h-12 w-12 rounded-full overflow-hidden bg-gray-800 flex-shrink-0">
-                    {airdrop.airdropImageUrl ? (
-                      <Image
-                        src={airdrop.airdropImageUrl || "/placeholder.svg"}
-                        alt={airdrop.name}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center text-gray-400">
-                        <span className="text-xs">No img</span>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <div className="font-medium text-white">{airdrop.name}</div>
-                    <Badge variant={getBadgeVariant(airdrop.type)} className="capitalize mt-1">
-                      {airdrop.type}
-                    </Badge>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex space-x-2">
-                    {airdrop.airdropLink ? (
-                      <a
-                        href={airdrop.airdropLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-400 hover:text-blue-300"
-                        onClick={(e) => {
-                          // Prevent default to handle our custom logic first
-                          e.preventDefault()
-                          // Mark as completed
-                          handleAirdropLinkClick(airdropId)
-                          // Then open the link
-                          window.open(airdrop.airdropLink, "_blank", "noopener,noreferrer")
-                        }}
-                      >
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
-                          title="Airdrop Link"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </a>
-                    ) : (
-                      <span className="text-gray-500">-</span>
-                    )}
-
-                    {airdrop.type === "testnet" && airdrop.faucetLink ? (
-                      <a
-                        href={airdrop.faucetLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-green-400 hover:text-green-300"
-                      >
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-green-400 hover:text-green-300 hover:bg-green-900/20"
-                          title="Faucet Link"
-                        >
-                          <Droplet className="h-4 w-4" />
-                        </Button>
-                      </a>
-                    ) : null}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`h-8 w-8 ${airdrop.completed ? "text-green-400 hover:text-green-300 hover:bg-green-900/20" : "text-red-400 hover:text-red-300 hover:bg-red-900/20"}`}
-                    onClick={() => handleToggleCompletion(airdropId)}
-                    disabled={isLoading[airdropId]}
-                    title={airdrop.completed ? "Mark as incomplete" : "Mark as complete"}
-                  >
-                    {isLoading[airdropId] ? (
-                      <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    ) : airdrop.completed ? (
-                      <CheckCircle className="h-4 w-4" />
-                    ) : (
-                      <XCircle className="h-4 w-4" />
-                    )}
-                  </Button>
-                </td>
-                <td className="px-4 py-3">
-                  <a
-                    href={airdrop.twitterLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300"
-                  >
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
-                    >
-                      <Twitter className="h-4 w-4" />
-                    </Button>
-                  </a>
-                </td>
-                <td className="px-4 py-3">
-                  <a
-                    href={airdrop.discordLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-indigo-400 hover:text-indigo-300"
-                  >
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-900/20"
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                    </Button>
-                  </a>
-                </td>
-                <td className="px-4 py-3">
-                  {airdrop.description ? (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-gray-400 hover:text-gray-300 hover:bg-gray-700/20"
-                          onClick={() => setSelectedAirdrop(airdrop)}
-                        >
-                          <FileText className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[700px] bg-[#1a1f2e] border-gray-700">
-                        <DialogHeader>
-                          <DialogTitle className="text-white">{selectedAirdrop?.name} - Notes</DialogTitle>
-                        </DialogHeader>
-                        <div className="mt-4 text-gray-200 whitespace-pre-wrap p-4 bg-[#0f1623] rounded-md max-h-[400px] overflow-y-auto">
-                          {selectedAirdrop?.description || "No description available."}
+          {filteredAirdrops.length === 0 ? (
+            <tr>
+              <td colSpan={13} className="px-4 py-8 text-center text-gray-400">
+                No airdrops found matching your filters. Try adjusting your search or filters.
+              </td>
+            </tr>
+          ) : (
+            filteredAirdrops.map((airdrop) => {
+              const chainInfo = getChainInfo(airdrop.chain)
+              const airdropId = airdrop._id.toString()
+              return (
+                <tr key={airdropId} className="border-b border-gray-700 hover:bg-[#1a1f2e]">
+                  <td className="px-4 py-3 flex items-center gap-3">
+                    <div className="relative h-12 w-12 rounded-full overflow-hidden bg-gray-800 flex-shrink-0">
+                      {airdrop.airdropImageUrl ? (
+                        <Image
+                          src={airdrop.airdropImageUrl || "/placeholder.svg"}
+                          alt={airdrop.name}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-gray-400">
+                          <span className="text-xs">No img</span>
                         </div>
-                      </DialogContent>
-                    </Dialog>
-                  ) : (
-                    <span className="text-gray-500">-</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="text-yellow-500">{new Date(airdrop.createdAt).toLocaleDateString()}</div>
-                  <div className="text-xs text-gray-400">
-                    {formatDistanceToNow(new Date(airdrop.createdAt), { addSuffix: true })}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center">
-                    <div className={`h-6 w-6 mr-2 ${chainInfo.bgColor} rounded-full flex items-center justify-center`}>
-                      <span className={`text-xs ${chainInfo.textColor}`}>{chainInfo.letter}</span>
+                      )}
                     </div>
-                    <span>{airdrop.chain || "Ethereum"}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <Badge variant="outline" className="bg-blue-900/20 text-blue-300 border-blue-800">
-                    {airdrop.type === "testnet" ? "Testnet" : "Mainnet"}
-                  </Badge>
-                </td>
-                <td className="px-4 py-3">
-                  <Badge className="bg-blue-600 hover:bg-blue-700">DailyClaim</Badge>
-                </td>
-                <td className="px-4 py-3 text-gray-400">
-                  {formatDistanceToNow(new Date(airdrop.updatedAt || airdrop.createdAt), { addSuffix: true })}
-                </td>
-                <td className="px-4 py-3">
-                  {airdrop.guideImageUrl ? (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-green-400 hover:text-green-300 hover:bg-green-900/20"
-                          onClick={() => setSelectedAirdrop(airdrop)}
+                    <div>
+                      <div className="font-medium text-white">{airdrop.name}</div>
+                      <Badge variant={getBadgeVariant(airdrop.type)} className="capitalize mt-1">
+                        {airdrop.type}
+                      </Badge>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex space-x-2">
+                      {airdrop.airdropLink ? (
+                        <a
+                          href={airdrop.airdropLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300"
+                          onClick={(e) => {
+                            // Prevent default to handle our custom logic first
+                            e.preventDefault()
+                            // Mark as completed
+                            handleAirdropLinkClick(airdropId)
+                            // Then open the link
+                            window.open(airdrop.airdropLink, "_blank", "noopener,noreferrer")
+                          }}
                         >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[800px] bg-[#1a1f2e] border-gray-700">
-                        <DialogHeader>
-                          <DialogTitle className="text-white">{selectedAirdrop?.name} - Guide</DialogTitle>
-                        </DialogHeader>
-                        <div className="relative h-[500px] w-full mt-4 bg-[#0f1623] rounded-md overflow-hidden">
-                          {selectedAirdrop?.guideImageUrl && (
-                            <div className="w-full h-full flex flex-col items-center justify-center">
-                              {isBase64Image(selectedAirdrop.guideImageUrl) ? (
-                                <img
-                                  src={selectedAirdrop.guideImageUrl || "/placeholder.svg"}
-                                  alt="Tutorial Guide"
-                                  className="max-w-full max-h-full object-contain"
-                                />
-                              ) : (
-                                <div className="text-4xl font-bold text-white/80">
-                                  Guide Image (
-                                  {selectedAirdrop.guideImageUrl.includes("(")
-                                    ? selectedAirdrop.guideImageUrl.match(/$$([^)]+)$$/)?.[1] || "Unknown"
-                                    : "Unknown"}
-                                  )
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  ) : (
-                    <span className="text-gray-500">-</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex space-x-2">
-                    <Link href={`/dashboard/edit/${airdropId}`}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                            title="Airdrop Link"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </a>
+                      ) : (
+                        <span className="text-gray-500">-</span>
+                      )}
+
+                      {airdrop.type === "testnet" && airdrop.faucetLink ? (
+                        <a
+                          href={airdrop.faucetLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-green-400 hover:text-green-300"
+                        >
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-green-400 hover:text-green-300 hover:bg-green-900/20"
+                            title="Faucet Link"
+                          >
+                            <Droplet className="h-4 w-4" />
+                          </Button>
+                        </a>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`h-8 w-8 ${airdrop.completed ? "text-green-400 hover:text-green-300 hover:bg-green-900/20" : "text-red-400 hover:text-red-300 hover:bg-red-900/20"}`}
+                      onClick={() => handleToggleCompletion(airdropId)}
+                      disabled={isLoading[airdropId]}
+                      title={airdrop.completed ? "Mark as incomplete" : "Mark as complete"}
+                    >
+                      {isLoading[airdropId] ? (
+                        <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      ) : airdrop.completed ? (
+                        <CheckCircle className="h-4 w-4" />
+                      ) : (
+                        <XCircle className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </td>
+                  <td className="px-4 py-3">
+                    <a
+                      href={airdrop.twitterLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:text-blue-300"
+                    >
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/20"
-                        title="Edit Airdrop"
+                        className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
                       >
-                        <Edit className="h-4 w-4" />
+                        <Twitter className="h-4 w-4" />
                       </Button>
-                    </Link>
-
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
+                    </a>
+                  </td>
+                  <td className="px-4 py-3">
+                    <a
+                      href={airdrop.discordLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-400 hover:text-indigo-300"
+                    >
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-900/20"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </Button>
+                    </a>
+                  </td>
+                  <td className="px-4 py-3">
+                    {airdrop.description ? (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-gray-400 hover:text-gray-300 hover:bg-gray-700/20"
+                            onClick={() => setSelectedAirdrop(airdrop)}
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[700px] bg-[#1a1f2e] border-gray-700">
+                          <DialogHeader>
+                            <DialogTitle className="text-white">{selectedAirdrop?.name} - Notes</DialogTitle>
+                          </DialogHeader>
+                          <div className="mt-4 text-gray-200 whitespace-pre-wrap p-4 bg-[#0f1623] rounded-md max-h-[400px] overflow-y-auto">
+                            {selectedAirdrop?.description || "No description available."}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    ) : (
+                      <span className="text-gray-500">-</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-yellow-500">{new Date(airdrop.createdAt).toLocaleDateString()}</div>
+                    <div className="text-xs text-gray-400">
+                      {formatDistanceToNow(new Date(airdrop.createdAt), { addSuffix: true })}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center">
+                      <div
+                        className={`h-6 w-6 mr-2 ${chainInfo.bgColor} rounded-full flex items-center justify-center`}
+                      >
+                        <span className={`text-xs ${chainInfo.textColor}`}>{chainInfo.letter}</span>
+                      </div>
+                      <span>{airdrop.chain || "Ethereum"}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant="outline" className="bg-blue-900/20 text-blue-300 border-blue-800">
+                      {airdrop.type === "testnet" ? "Testnet" : "Mainnet"}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge className="bg-blue-600 hover:bg-blue-700">DailyClaim</Badge>
+                  </td>
+                  <td className="px-4 py-3 text-gray-400">
+                    {formatDistanceToNow(new Date(airdrop.updatedAt || airdrop.createdAt), { addSuffix: true })}
+                  </td>
+                  <td className="px-4 py-3">
+                    {airdrop.guideImageUrl ? (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-green-400 hover:text-green-300 hover:bg-green-900/20"
+                            onClick={() => setSelectedAirdrop(airdrop)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[800px] bg-[#1a1f2e] border-gray-700">
+                          <DialogHeader>
+                            <DialogTitle className="text-white">{selectedAirdrop?.name} - Guide</DialogTitle>
+                          </DialogHeader>
+                          <div className="relative h-[500px] w-full mt-4 bg-[#0f1623] rounded-md overflow-hidden">
+                            {selectedAirdrop?.guideImageUrl && (
+                              <div className="w-full h-full flex flex-col items-center justify-center">
+                                {isBase64Image(selectedAirdrop.guideImageUrl) ? (
+                                  <img
+                                    src={selectedAirdrop.guideImageUrl || "/placeholder.svg"}
+                                    alt="Tutorial Guide"
+                                    className="max-w-full max-h-full object-contain"
+                                  />
+                                ) : (
+                                  <div className="text-4xl font-bold text-white/80">
+                                    Guide Image (
+                                    {selectedAirdrop.guideImageUrl.includes("(")
+                                      ? selectedAirdrop.guideImageUrl.match(/$$([^)]+)$$/)?.[1] || "Unknown"
+                                      : "Unknown"}
+                                    )
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    ) : (
+                      <span className="text-gray-500">-</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex space-x-2">
+                      <Link href={`/dashboard/edit/${airdropId}`}>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                          title="Delete Airdrop"
+                          className="h-8 w-8 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-900/20"
+                          title="Edit Airdrop"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Edit className="h-4 w-4" />
                         </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent className="bg-[#1a1f2e] border-gray-700 text-white">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Airdrop</AlertDialogTitle>
-                          <AlertDialogDescription className="text-gray-400">
-                            Are you sure you want to delete the &quot;{airdrop.name}&quot; airdrop? This action cannot
-                            be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel className="bg-gray-800 text-white hover:bg-gray-700 border-gray-600">
-                            Cancel
-                          </AlertDialogCancel>
-                          <AlertDialogAction
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                            onClick={() => handleDeleteAirdrop(airdropId)}
-                            disabled={isLoading[airdropId]}
+                      </Link>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                            title="Delete Airdrop"
                           >
-                            {isLoading[airdropId] ? (
-                              <>
-                                <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                                Deleting...
-                              </>
-                            ) : (
-                              "Delete"
-                            )}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </td>
-              </tr>
-            )
-          })}
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-[#1a1f2e] border-gray-700 text-white">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Airdrop</AlertDialogTitle>
+                            <AlertDialogDescription className="text-gray-400">
+                              Are you sure you want to delete the &quot;{airdrop.name}&quot; airdrop? This action cannot
+                              be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="bg-gray-800 text-white hover:bg-gray-700 border-gray-600">
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                              onClick={() => handleDeleteAirdrop(airdropId)}
+                              disabled={isLoading[airdropId]}
+                            >
+                              {isLoading[airdropId] ? (
+                                <>
+                                  <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                                  Deleting...
+                                </>
+                              ) : (
+                                "Delete"
+                              )}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })
+          )}
         </tbody>
       </table>
     </div>
