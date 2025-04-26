@@ -119,7 +119,7 @@ async function StatsCards({ userId }: { userId: string }) {
           <CardTitle className="text-2xl text-white flex items-baseline">
             {completionPercentage}%
             <span className="ml-2 text-sm text-green-400 flex items-center">
-              +{Math.round((upcomingAirdrops / totalAirdrops) * 100) || 0}%
+              +{Math.round((upcomingAirdrops / (totalAirdrops || 1)) * 100)}%
               <ArrowUpRight className="h-3 w-3 ml-0.5" />
             </span>
           </CardTitle>

@@ -50,9 +50,10 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
   // Apply search, filters, and sorting from URL params
   useEffect(() => {
     let result = [...localAirdrops]
+    const params = new URLSearchParams(window.location.search)
 
     // Apply search
-    const searchQuery = searchParams.get("search")
+    const searchQuery = params.get("search")
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       result = result.filter(
@@ -65,7 +66,7 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
     }
 
     // Apply status filter
-    const statusFilter = searchParams.get("status")
+    const statusFilter = params.get("status")
     if (statusFilter) {
       if (statusFilter === "completed") {
         result = result.filter((airdrop) => airdrop.completed)
@@ -75,19 +76,19 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
     }
 
     // Apply chain filter
-    const chainFilter = searchParams.get("chain")
+    const chainFilter = params.get("chain")
     if (chainFilter) {
       result = result.filter((airdrop) => (airdrop.chain || "ethereum").toLowerCase() === chainFilter.toLowerCase())
     }
 
     // Apply type filter
-    const typeFilter = searchParams.get("type")
+    const typeFilter = params.get("type")
     if (typeFilter) {
       result = result.filter((airdrop) => airdrop.type && airdrop.type.toLowerCase() === typeFilter.toLowerCase())
     }
 
     // Apply sorting
-    const sortBy = searchParams.get("sort") || "newest"
+    const sortBy = params.get("sort") || "newest"
     switch (sortBy) {
       case "newest":
         result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -113,6 +114,23 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
 
     setFilteredAirdrops(result)
   }, [localAirdrops, searchParams])
+
+  // Add an event listener to update when the URL changes:
+  useEffect(() => {
+    // Function to handle URL parameter changes
+    const handleUrlChange = () => {
+      // This will trigger the filtering useEffect
+      setLocalAirdrops([...airdrops])
+    }
+
+    // Listen for popstate events (browser back/forward)
+    window.addEventListener("popstate", handleUrlChange)
+
+    // Clean up
+    return () => {
+      window.removeEventListener("popstate", handleUrlChange)
+    }
+  }, [airdrops])
 
   // Check for airdrops that need to be reset (completed more than 24 hours ago)
   useEffect(() => {

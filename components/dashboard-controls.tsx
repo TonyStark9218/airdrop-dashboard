@@ -24,8 +24,11 @@ export async function DashboardControls({ userId }: { userId: string }) {
   const airdrops = await getAirdrops(userId)
 
   // Get unique chains and types for filters
-  const chains = Array.from(new Set(airdrops.map((airdrop) => airdrop.chain || "ethereum"))).sort()
-  const types = Array.from(new Set(airdrops.map((airdrop) => airdrop.type))).sort()
+  const chainSet = new Set(airdrops.map((airdrop) => airdrop.chain || "ethereum"))
+  const typeSet = new Set(airdrops.map((airdrop) => airdrop.type))
+
+  const chains = Array.from(chainSet).sort()
+  const types = Array.from(typeSet).sort()
 
   return <ClientDashboardControls chains={chains} types={types} />
 }
@@ -55,17 +58,26 @@ function ClientDashboardControls({
 
   // Update URL when filters change
   useEffect(() => {
-    const params = new URLSearchParams()
+    const params = new URLSearchParams(searchParams.toString())
 
     if (search) params.set("search", search)
+    else params.delete("search")
+
     if (activeFilters.status) params.set("status", activeFilters.status)
+    else params.delete("status")
+
     if (activeFilters.chain) params.set("chain", activeFilters.chain)
+    else params.delete("chain")
+
     if (activeFilters.type) params.set("type", activeFilters.type)
-    if (sortBy) params.set("sort", sortBy)
+    else params.delete("type")
+
+    if (sortBy && sortBy !== "newest") params.set("sort", sortBy)
+    else params.delete("sort")
 
     const queryString = params.toString()
-    router.push(queryString ? `?${queryString}` : "/dashboard")
-  }, [search, activeFilters, sortBy, router])
+    router.push(queryString ? `?${queryString}` : "/dashboard", { scroll: false })
+  }, [search, activeFilters, sortBy, router, searchParams])
 
   // Count active filters
   const activeFilterCount = Object.values(activeFilters).filter(Boolean).length
