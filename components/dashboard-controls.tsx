@@ -6,7 +6,16 @@ import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, SlidersHorizontal, Check, X } from "lucide-react"
+import { Search, SlidersHorizontal, ArrowDownAZ, Check, X, Calendar, Wallet } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import type { AirdropDocument } from "@/lib/models/airdrop"
@@ -43,6 +52,8 @@ export function DashboardControls({ airdrops, onFiltersChange }: DashboardContro
     type: searchParams.get("type") || undefined,
   })
 
+  const [sortBy, setSortBy] = useState(searchParams.get("sort") || "newest")
+
   // Apply filters and sorting
   useEffect(() => {
     let result = [...airdrops]
@@ -59,12 +70,12 @@ export function DashboardControls({ airdrops, onFiltersChange }: DashboardContro
       )
     }
 
-    // Fix the status filter
+    // Apply status filter
     if (activeFilters.status) {
       if (activeFilters.status === "completed") {
-        result = result.filter((airdrop) => airdrop.completed === true)
+        result = result.filter((airdrop) => airdrop.completed)
       } else if (activeFilters.status === "active") {
-        result = result.filter((airdrop) => airdrop.completed === false)
+        result = result.filter((airdrop) => !airdrop.completed)
       }
     }
 
@@ -82,6 +93,28 @@ export function DashboardControls({ airdrops, onFiltersChange }: DashboardContro
       )
     }
 
+    // Apply sorting
+    switch (sortBy) {
+      case "newest":
+        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        break
+      case "oldest":
+        result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        break
+      case "name-asc":
+        result.sort((a, b) => a.name.localeCompare(b.name))
+        break
+      case "name-desc":
+        result.sort((a, b) => b.name.localeCompare(a.name))
+        break
+      case "value-high":
+        result.sort((a, b) => (b.completed ? 1 : 0) - (a.completed ? 1 : 0))
+        break
+      case "value-low":
+        result.sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0))
+        break
+    }
+
     // Update URL
     const params = new URLSearchParams()
 
@@ -89,13 +122,14 @@ export function DashboardControls({ airdrops, onFiltersChange }: DashboardContro
     if (activeFilters.status) params.set("status", activeFilters.status)
     if (activeFilters.chain) params.set("chain", activeFilters.chain)
     if (activeFilters.type) params.set("type", activeFilters.type)
+    if (sortBy && sortBy !== "newest") params.set("sort", sortBy)
 
     const queryString = params.toString()
     router.replace(queryString ? `?${queryString}` : "/dashboard", { scroll: false })
 
     // Pass filtered airdrops to parent component
     onFiltersChange(result)
-  }, [search, activeFilters, airdrops, router, onFiltersChange])
+  }, [search, activeFilters, sortBy, airdrops, router, onFiltersChange])
 
   // Count active filters
   const activeFilterCount = Object.values(activeFilters).filter(Boolean).length
@@ -109,6 +143,7 @@ export function DashboardControls({ airdrops, onFiltersChange }: DashboardContro
   // Clear all filters
   const clearFilters = () => {
     setActiveFilters({})
+    setSortBy("newest")
     setSearch("")
   }
 
@@ -257,6 +292,73 @@ export function DashboardControls({ airdrops, onFiltersChange }: DashboardContro
               </div>
             </PopoverContent>
           </Popover>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-transparent border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white"
+              >
+                <ArrowDownAZ className="h-4 w-4 mr-2" />
+                Sort
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-[#1a1f2e] border-gray-700 text-white">
+              <DropdownMenuLabel>Sort By</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-gray-700" />
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  className={sortBy === "newest" ? "bg-gray-800" : ""}
+                  onClick={() => setSortBy("newest")}
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  <span>Newest First</span>
+                  {sortBy === "newest" && <Check className="h-4 w-4 ml-2" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className={sortBy === "oldest" ? "bg-gray-800" : ""}
+                  onClick={() => setSortBy("oldest")}
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  <span>Oldest First</span>
+                  {sortBy === "oldest" && <Check className="h-4 w-4 ml-2" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className={sortBy === "name-asc" ? "bg-gray-800" : ""}
+                  onClick={() => setSortBy("name-asc")}
+                >
+                  <ArrowDownAZ className="h-4 w-4 mr-2" />
+                  <span>Name (A-Z)</span>
+                  {sortBy === "name-asc" && <Check className="h-4 w-4 ml-2" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className={sortBy === "name-desc" ? "bg-gray-800" : ""}
+                  onClick={() => setSortBy("name-desc")}
+                >
+                  <ArrowDownAZ className="h-4 w-4 mr-2 rotate-180" />
+                  <span>Name (Z-A)</span>
+                  {sortBy === "name-desc" && <Check className="h-4 w-4 ml-2" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className={sortBy === "value-high" ? "bg-gray-800" : ""}
+                  onClick={() => setSortBy("value-high")}
+                >
+                  <Wallet className="h-4 w-4 mr-2" />
+                  <span>Value (High-Low)</span>
+                  {sortBy === "value-high" && <Check className="h-4 w-4 ml-2" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className={sortBy === "value-low" ? "bg-gray-800" : ""}
+                  onClick={() => setSortBy("value-low")}
+                >
+                  <Wallet className="h-4 w-4 mr-2" />
+                  <span>Value (Low-High)</span>
+                  {sortBy === "value-low" && <Check className="h-4 w-4 ml-2" />}
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </div>

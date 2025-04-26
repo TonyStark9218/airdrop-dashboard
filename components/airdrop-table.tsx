@@ -18,7 +18,7 @@ import {
 import type { AirdropDocument } from "@/lib/models/airdrop"
 import { formatDistanceToNow } from "date-fns"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { toggleAirdropCompletion, deleteAirdrop } from "@/lib/airdrop-actions"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -44,15 +44,9 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({})
   const [selectedAirdrop, setSelectedAirdrop] = useState<AirdropDocument | null>(null)
 
-  // Add this after the state declarations
-  const initialRenderRef = useRef(true)
-
   // Update local airdrops when props change
   useEffect(() => {
-    // Only update if the arrays are different (by reference)
-    if (airdrops !== localAirdrops) {
-      setLocalAirdrops(airdrops)
-    }
+    setLocalAirdrops(airdrops)
   }, [airdrops])
 
   // Fix the toast notification issue by adding auto-dismiss and limiting toast display
@@ -84,35 +78,24 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
       if (hasChanges) {
         setLocalAirdrops(updatedAirdrops)
 
-        // Only show toast on actual status changes, not during search/filter operations
-        // and not on initial render
-        if (!initialRenderRef.current) {
-          toast({
-            title: "Status updated",
-            description: "Some airdrops have been automatically reset after 24 hours",
-            duration: 3000, // Auto-dismiss after 3 seconds
-          })
-        }
+        // Show toast notification only when actual changes happen
+        toast({
+          title: "Status updated",
+          description: "Some airdrops have been automatically reset after 24 hours",
+          duration: 3000, // Auto-dismiss after 3 seconds
+        })
       }
     }
 
-    // Skip toast on initial render
-    if (initialRenderRef.current) {
-      initialRenderRef.current = false
-      checkCompletionStatus()
-    } else {
-      // Only check completion status when airdrops prop changes, not on every render
-      if (airdrops !== localAirdrops) {
-        checkCompletionStatus()
-      }
-    }
+    // Check on initial load
+    checkCompletionStatus()
 
-    // Set up interval to check every 5 minutes
+    // Set up interval to check every 5 minutes instead of every minute
     const intervalId = setInterval(checkCompletionStatus, 5 * 60 * 1000)
 
     // Clean up interval on unmount
     return () => clearInterval(intervalId)
-  }, [localAirdrops, toast, airdrops])
+  }, [localAirdrops, toast])
 
   // Function to get badge color based on airdrop type
   const getBadgeVariant = (type: string) => {
