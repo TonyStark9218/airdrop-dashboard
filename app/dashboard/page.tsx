@@ -2,15 +2,12 @@ import { redirect } from "next/navigation"
 import { getSession } from "@/lib/auth-utils"
 import { getAirdrops } from "@/lib/airdrop-actions"
 import { Suspense } from "react"
-import { AirdropTable } from "@/components/airdrop-table"
 import { AirdropTableSkeleton } from "@/components/airdrop-table-skeleton"
 import { Button } from "@/components/ui/button"
 import { Plus, BarChart3, Wallet, Coins, ArrowUpRight } from "lucide-react"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { DashboardControls } from "@/components/dashboard-controls"
-import { useState } from "react"
-import type { AirdropDocument } from "@/lib/models/airdrop"
+import { AirdropTableWithControls } from "@/components/airdrop-table-with-controls"
 
 export default async function DashboardPage() {
   const session = await getSession()
@@ -52,6 +49,7 @@ export default async function DashboardPage() {
 async function StatsCards({ userId }: { userId: string }) {
   const airdrops = await getAirdrops(userId)
 
+  // Calculate stats
   const totalAirdrops = airdrops.length
   const completedAirdrops = airdrops.filter((airdrop) => airdrop.completed).length
   const activeAirdrops = totalAirdrops - completedAirdrops
@@ -193,17 +191,4 @@ async function AirdropContent({ userId }: { userId: string }) {
   }
 
   return <AirdropTableWithControls airdrops={airdrops} />
-}
-
-function AirdropTableWithControls({ airdrops }: { airdrops: AirdropDocument[] }) {
-  "use client"
-
-  const [filteredAirdrops, setFilteredAirdrops] = useState(airdrops)
-
-  return (
-    <>
-      <DashboardControls airdrops={airdrops} onFiltersChange={setFilteredAirdrops} />
-      <AirdropTable airdrops={filteredAirdrops} />
-    </>
-  )
 }
