@@ -9,6 +9,8 @@ import { Plus, BarChart3, Wallet, Coins, ArrowUpRight } from "lucide-react"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardControls } from "@/components/dashboard-controls"
+import { useState } from "react"
+import type { AirdropDocument } from "@/lib/models/airdrop"
 
 export default async function DashboardPage() {
   const session = await getSession()
@@ -39,10 +41,6 @@ export default async function DashboardPage() {
       </Suspense>
 
       <div className="bg-[#1a1f2e] border border-gray-700 rounded-lg p-6">
-        <Suspense fallback={<div className="h-12 animate-pulse bg-gray-800 rounded-md mb-6"></div>}>
-          <DashboardControls userId={session.userId} />
-        </Suspense>
-
         <Suspense fallback={<AirdropTableSkeleton />}>
           <AirdropContent userId={session.userId} />
         </Suspense>
@@ -195,5 +193,18 @@ async function AirdropContent({ userId }: { userId: string }) {
     )
   }
 
-  return <AirdropTable airdrops={airdrops} />
+  return <AirdropTableWithControls airdrops={airdrops} />
+}
+
+function AirdropTableWithControls({ airdrops }: { airdrops: AirdropDocument[] }) {
+  "use client"
+
+  const [filteredAirdrops, setFilteredAirdrops] = useState(airdrops)
+
+  return (
+    <>
+      <DashboardControls airdrops={airdrops} onFiltersChange={setFilteredAirdrops} />
+      <AirdropTable airdrops={filteredAirdrops} />
+    </>
+  )
 }

@@ -33,7 +33,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
 
 interface AirdropTableProps {
   airdrops: AirdropDocument[]
@@ -41,95 +40,13 @@ interface AirdropTableProps {
 
 export function AirdropTable({ airdrops }: AirdropTableProps) {
   const { toast } = useToast()
-  const searchParams = useSearchParams()
   const [localAirdrops, setLocalAirdrops] = useState<AirdropDocument[]>(airdrops)
-  const [filteredAirdrops, setFilteredAirdrops] = useState<AirdropDocument[]>(airdrops)
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({})
   const [selectedAirdrop, setSelectedAirdrop] = useState<AirdropDocument | null>(null)
 
-  // Apply search, filters, and sorting from URL params
+  // Update local airdrops when props change
   useEffect(() => {
-    let result = [...localAirdrops]
-    const params = new URLSearchParams(window.location.search)
-
-    // Apply search
-    const searchQuery = params.get("search")
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter(
-        (airdrop) =>
-          airdrop.name.toLowerCase().includes(query) ||
-          (airdrop.description && airdrop.description.toLowerCase().includes(query)) ||
-          (airdrop.chain && airdrop.chain.toLowerCase().includes(query)) ||
-          (airdrop.type && airdrop.type.toLowerCase().includes(query)),
-      )
-    }
-
-    // Apply status filter
-    const statusFilter = params.get("status")
-    if (statusFilter) {
-      if (statusFilter === "completed") {
-        result = result.filter((airdrop) => airdrop.completed)
-      } else if (statusFilter === "active") {
-        result = result.filter((airdrop) => !airdrop.completed)
-      }
-    }
-
-    // Apply chain filter
-    const chainFilter = params.get("chain")
-    if (chainFilter) {
-      result = result.filter((airdrop) => (airdrop.chain || "ethereum").toLowerCase() === chainFilter.toLowerCase())
-    }
-
-    // Apply type filter
-    const typeFilter = params.get("type")
-    if (typeFilter) {
-      result = result.filter((airdrop) => airdrop.type && airdrop.type.toLowerCase() === typeFilter.toLowerCase())
-    }
-
-    // Apply sorting
-    const sortBy = params.get("sort") || "newest"
-    switch (sortBy) {
-      case "newest":
-        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        break
-      case "oldest":
-        result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-        break
-      case "name-asc":
-        result.sort((a, b) => a.name.localeCompare(b.name))
-        break
-      case "name-desc":
-        result.sort((a, b) => b.name.localeCompare(a.name))
-        break
-      case "value-high":
-        // This is a placeholder - you might want to implement your own value logic
-        result.sort((a, b) => (b.completed ? 1 : 0) - (a.completed ? 1 : 0))
-        break
-      case "value-low":
-        // This is a placeholder - you might want to implement your own value logic
-        result.sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0))
-        break
-    }
-
-    setFilteredAirdrops(result)
-  }, [localAirdrops, searchParams])
-
-  // Add an event listener to update when the URL changes:
-  useEffect(() => {
-    // Function to handle URL parameter changes
-    const handleUrlChange = () => {
-      // This will trigger the filtering useEffect
-      setLocalAirdrops([...airdrops])
-    }
-
-    // Listen for popstate events (browser back/forward)
-    window.addEventListener("popstate", handleUrlChange)
-
-    // Clean up
-    return () => {
-      window.removeEventListener("popstate", handleUrlChange)
-    }
+    setLocalAirdrops(airdrops)
   }, [airdrops])
 
   // Check for airdrops that need to be reset (completed more than 24 hours ago)
@@ -377,14 +294,14 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
           </tr>
         </thead>
         <tbody>
-          {filteredAirdrops.length === 0 ? (
+          {localAirdrops.length === 0 ? (
             <tr>
               <td colSpan={13} className="px-4 py-8 text-center text-gray-400">
                 No airdrops found matching your filters. Try adjusting your search or filters.
               </td>
             </tr>
           ) : (
-            filteredAirdrops.map((airdrop) => {
+            localAirdrops.map((airdrop) => {
               const chainInfo = getChainInfo(airdrop.chain)
               const airdropId = airdrop._id.toString()
               return (

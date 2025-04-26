@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, SlidersHorizontal, ArrowDownAZ, Check, X, Calendar, Wallet } from "lucide-react"
-import { getAirdrops } from "@/lib/airdrop-actions"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,29 +18,28 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
+import type { AirdropDocument } from "@/lib/models/airdrop"
 
-export async function DashboardControls({ userId }: { userId: string }) {
-  const airdrops = await getAirdrops(userId)
+interface DashboardControlsProps {
+  airdrops: AirdropDocument[]
+  onFiltersChange: (filteredAirdrops: AirdropDocument[]) => void
+}
 
-  // Get unique chains and types for filters
-  const chainSet = new Set(airdrops.map((airdrop) => airdrop.chain || "ethereum"))
-  const typeSet = new Set(airdrops.map((airdrop) => airdrop.type))
+export function DashboardControls({ airdrops, onFiltersChange }: DashboardControlsProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Extract unique chains and types
+  const chainSet = new Set<string>()
+  const typeSet = new Set<string>()
+
+  airdrops.forEach((airdrop) => {
+    chainSet.add(airdrop.chain || "ethereum")
+    if (airdrop.type) typeSet.add(airdrop.type)
+  })
 
   const chains = Array.from(chainSet).sort()
   const types = Array.from(typeSet).sort()
-
-  return <ClientDashboardControls chains={chains} types={types} />
-}
-
-function ClientDashboardControls({
-  chains,
-  types,
-}: {
-  chains: string[]
-  types: string[]
-}) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
 
   const [search, setSearch] = useState(searchParams.get("search") || "")
   const [activeFilters, setActiveFilters] = useState<{
@@ -56,8 +54,70 @@ function ClientDashboardControls({
 
   const [sortBy, setSortBy] = useState(searchParams.get("sort") || "newest")
 
-  // Update URL when filters change
+  // Apply filters and sorting
   useEffect(() => {
+    let result = [...airdrops]
+
+    // Apply search
+    if (search) {
+      const query = search.toLowerCase()
+      result = result.filter(
+        (airdrop) =>
+          airdrop.name.toLowerCase().includes(query) ||
+          (airdrop.description && airdrop.description.toLowerCase().includes(query)) ||
+          (airdrop.chain && airdrop.chain.toLowerCase().includes(query)) ||
+          (airdrop.type && airdrop.type.toLowerCase().includes(query)),
+      )
+    }
+
+    // Apply status filter
+    if (activeFilters.status) {
+      if (activeFilters.status === "completed") {
+        result = result.filter((airdrop) => airdrop.completed)
+      } else if (activeFilters.status === "active") {
+        result = result.filter((airdrop) => !airdrop.completed)
+      }
+    }
+
+    // Apply chain filter
+    if (activeFilters.chain) {
+      result = result.filter(
+        (airdrop) => (airdrop.chain || "ethereum").toLowerCase() === activeFilters.chain?.toLowerCase(),
+      )
+    }
+
+    // Apply type filter
+    if (activeFilters.type) {
+      result = result.filter(
+        (airdrop) => airdrop.type && airdrop.type.toLowerCase() === activeFilters.type?.toLowerCase(),
+      )
+    }
+
+    // Apply sorting
+    switch (sortBy) {
+      case "newest":
+        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        break
+      case "oldest":
+        result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        break
+      case "name-asc":
+        result.sort((a, b) => a.name.localeCompare(b.name))
+        break
+      case "name-desc":
+        result.sort((a, b) => b.name.localeCompare(a.name))
+        break
+      case "value-high":
+        // This is a placeholder - you might want to implement your own value logic
+        result.sort((a, b) => (b.completed ? 1 : 0) - (a.completed ? 1 : 0))
+        break
+      case "value-low":
+        // This is a placeholder - you might want to implement your own value logic
+        result.sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0))
+        break
+    }
+
+    // Update URL
     const params = new URLSearchParams(searchParams.toString())
 
     if (search) params.set("search", search)
@@ -76,8 +136,11 @@ function ClientDashboardControls({
     else params.delete("sort")
 
     const queryString = params.toString()
-    router.push(queryString ? `?${queryString}` : "/dashboard", { scroll: false })
-  }, [search, activeFilters, sortBy, router, searchParams])
+    router.replace(queryString ? `?${queryString}` : "/dashboard", { scroll: false })
+
+    // Pass filtered airdrops to parent component
+    onFiltersChange(result)
+  }, [search, activeFilters, sortBy, airdrops, router, searchParams, onFiltersChange])
 
   // Count active filters
   const activeFilterCount = Object.values(activeFilters).filter(Boolean).length
