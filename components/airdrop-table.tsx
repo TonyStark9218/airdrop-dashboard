@@ -49,7 +49,8 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
     setLocalAirdrops(airdrops)
   }, [airdrops])
 
-  // Check for airdrops that need to be reset (completed more than 24 hours ago)
+  // Fix the toast notification issue by adding auto-dismiss and limiting toast display
+  // Update the useEffect for checking completion status
   useEffect(() => {
     // Function to check and reset completion status based on time
     const checkCompletionStatus = () => {
@@ -67,13 +68,6 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
             console.log(`Resetting airdrop ${airdrop.name} - completed ${hoursSinceCompletion.toFixed(1)} hours ago`)
             return { ...airdrop, completed: false }
           }
-
-          // For demonstration purposes, we'll also show when it will reset
-          const resetTime = new Date(completedAt.getTime() + 24 * 60 * 60 * 1000)
-          const hoursUntilReset = (resetTime.getTime() - now.getTime()) / (1000 * 60 * 60)
-          console.log(
-            `Airdrop ${airdrop.name} will reset in ${hoursUntilReset.toFixed(1)} hours (${resetTime.toLocaleTimeString()})`,
-          )
         }
         return airdrop
       })
@@ -84,11 +78,11 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
       if (hasChanges) {
         setLocalAirdrops(updatedAirdrops)
 
-        // In a real app, you would also update the database here
-        // For now, we'll just show a toast notification
+        // Show toast notification only when actual changes happen
         toast({
           title: "Status updated",
           description: "Some airdrops have been automatically reset after 24 hours",
+          duration: 3000, // Auto-dismiss after 3 seconds
         })
       }
     }
@@ -96,9 +90,8 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
     // Check on initial load
     checkCompletionStatus()
 
-    // Set up interval to check every minute (for demo purposes)
-    // In production, you might want to check less frequently (e.g., every 5-15 minutes)
-    const intervalId = setInterval(checkCompletionStatus, 60 * 1000)
+    // Set up interval to check every 5 minutes instead of every minute
+    const intervalId = setInterval(checkCompletionStatus, 5 * 60 * 1000)
 
     // Clean up interval on unmount
     return () => clearInterval(intervalId)
@@ -143,7 +136,7 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
     return str && str.startsWith("data:image/")
   }
 
-  // Handle toggle completion
+  // Also update the handleToggleCompletion function to use auto-dismiss toasts
   const handleToggleCompletion = async (airdropId: string, forceComplete = false) => {
     setIsLoading((prev) => ({ ...prev, [airdropId]: true }))
 
@@ -162,6 +155,7 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
             title: "Error",
             description: result.message || "Gagal memperbarui status",
             variant: "destructive",
+            duration: 3000, // Auto-dismiss after 3 seconds
           })
           setIsLoading((prev) => ({ ...prev, [airdropId]: false }))
           return
@@ -188,11 +182,13 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
         toast({
           title: "Ditandai sebagai selesai",
           description: `Airdrop ini akan direset otomatis pada ${resetTime.toLocaleTimeString()} besok`,
+          duration: 3000, // Auto-dismiss after 3 seconds
         })
       } else if (!forceComplete && (isCurrentlyCompleted || forceComplete === false)) {
         toast({
           title: "Ditandai sebagai belum selesai",
           description: "Status airdrop telah diperbarui",
+          duration: 3000, // Auto-dismiss after 3 seconds
         })
       }
     } catch (error) {
@@ -201,6 +197,7 @@ export function AirdropTable({ airdrops }: AirdropTableProps) {
         title: "Error",
         description: "Terjadi kesalahan saat memperbarui status",
         variant: "destructive",
+        duration: 3000, // Auto-dismiss after 3 seconds
       })
     } finally {
       setIsLoading((prev) => ({ ...prev, [airdropId]: false }))

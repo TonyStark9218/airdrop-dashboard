@@ -108,39 +108,28 @@ export function DashboardControls({ airdrops, onFiltersChange }: DashboardContro
         result.sort((a, b) => b.name.localeCompare(a.name))
         break
       case "value-high":
-        // This is a placeholder - you might want to implement your own value logic
         result.sort((a, b) => (b.completed ? 1 : 0) - (a.completed ? 1 : 0))
         break
       case "value-low":
-        // This is a placeholder - you might want to implement your own value logic
         result.sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0))
         break
     }
 
     // Update URL
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams()
 
     if (search) params.set("search", search)
-    else params.delete("search")
-
     if (activeFilters.status) params.set("status", activeFilters.status)
-    else params.delete("status")
-
     if (activeFilters.chain) params.set("chain", activeFilters.chain)
-    else params.delete("chain")
-
     if (activeFilters.type) params.set("type", activeFilters.type)
-    else params.delete("type")
-
     if (sortBy && sortBy !== "newest") params.set("sort", sortBy)
-    else params.delete("sort")
 
     const queryString = params.toString()
     router.replace(queryString ? `?${queryString}` : "/dashboard", { scroll: false })
 
     // Pass filtered airdrops to parent component
     onFiltersChange(result)
-  }, [search, activeFilters, sortBy, airdrops, router, searchParams, onFiltersChange])
+  }, [search, activeFilters, sortBy, airdrops, router, onFiltersChange])
 
   // Count active filters
   const activeFilterCount = Object.values(activeFilters).filter(Boolean).length

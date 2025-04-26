@@ -46,6 +46,7 @@ export default async function DashboardPage() {
   )
 }
 
+// Update the StatsCards function to show the correct data
 async function StatsCards({ userId }: { userId: string }) {
   const airdrops = await getAirdrops(userId)
 
@@ -53,7 +54,16 @@ async function StatsCards({ userId }: { userId: string }) {
   const totalAirdrops = airdrops.length
   const completedAirdrops = airdrops.filter((airdrop) => airdrop.completed).length
   const activeAirdrops = totalAirdrops - completedAirdrops
-  const completionPercentage = totalAirdrops > 0 ? Math.round((completedAirdrops / totalAirdrops) * 100) : 0
+
+  // Calculate daily completed airdrops (those completed in the last 24 hours)
+  const oneDayAgo = new Date()
+  oneDayAgo.setDate(oneDayAgo.getDate() - 1)
+  const dailyCompletedAirdrops = airdrops.filter(
+    (airdrop) => airdrop.completed && airdrop.updatedAt && new Date(airdrop.updatedAt) >= oneDayAgo,
+  ).length
+
+  // Calculate daily completion percentage
+  const dailyCompletionPercentage = activeAirdrops > 0 ? Math.round((dailyCompletedAirdrops / activeAirdrops) * 100) : 0
 
   // Calculate upcoming airdrops (those added in the last 7 days)
   const sevenDaysAgo = new Date()
@@ -110,11 +120,11 @@ async function StatsCards({ userId }: { userId: string }) {
       <Card className="bg-[#1a1f2e] border-gray-700 hover:border-gray-600 transition-all duration-300 overflow-hidden">
         <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-600/10 to-pink-600/10 rounded-bl-full"></div>
         <CardHeader className="pb-2">
-          <CardDescription className="text-gray-400">Completed Tasks</CardDescription>
+          <CardDescription className="text-gray-400">Completed Airdrop Daily</CardDescription>
           <CardTitle className="text-2xl text-white flex items-baseline">
-            {completionPercentage}%
+            {dailyCompletionPercentage}%
             <span className="ml-2 text-sm text-green-400 flex items-center">
-              +{Math.round((upcomingAirdrops / (totalAirdrops || 1)) * 100)}%
+              {dailyCompletedAirdrops} today
               <ArrowUpRight className="h-3 w-3 ml-0.5" />
             </span>
           </CardTitle>
@@ -122,12 +132,12 @@ async function StatsCards({ userId }: { userId: string }) {
         <CardContent>
           <div className="flex justify-between items-center">
             <span className="text-xs text-gray-400">
-              {completedAirdrops}/{totalAirdrops} tasks completed
+              {dailyCompletedAirdrops}/{activeAirdrops} daily tasks
             </span>
             <div className="h-2 w-24 bg-gray-700 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
-                style={{ width: `${completionPercentage}%` }}
+                style={{ width: `${dailyCompletionPercentage}%` }}
               ></div>
             </div>
           </div>
