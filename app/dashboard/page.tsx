@@ -52,7 +52,6 @@ export default async function DashboardPage() {
 async function StatsCards({ userId }: { userId: string }) {
   const airdrops = await getAirdrops(userId)
 
-  // Calculate stats
   const totalAirdrops = airdrops.length
   const completedAirdrops = airdrops.filter((airdrop) => airdrop.completed).length
   const activeAirdrops = totalAirdrops - completedAirdrops
