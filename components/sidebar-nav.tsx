@@ -34,10 +34,12 @@ import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 
+// Definisikan tipe untuk props
 interface SidebarNavProps {
   username: string;
 }
 
+// Gunakan tipe pada komponen
 export function SidebarNav({ username }: SidebarNavProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -64,7 +66,7 @@ export function SidebarNav({ username }: SidebarNavProps) {
       name: "Community",
       href: "/dashboard/community",
       icon: MessageSquare,
-      disabled: true, // Tambah status disabled
+      disabled: true,
       disabledReason: "Under Maintenance",
     },
     {
@@ -104,7 +106,7 @@ export function SidebarNav({ username }: SidebarNavProps) {
         <div className="flex items-center justify-between px-4">
           <div className="flex items-center gap-2 text-xl font-bold text-white">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-             <Image src='/logo.png' alt="Logo" width={50} height={50} className="rounded-lg" />
+              <Image src='/logo.png' alt="Logo" width={50} height={50} className="rounded-lg" />
             </div>
             <span className="text-2xl font-extrabold tracking-wide">
               <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent drop-shadow-md">
@@ -113,7 +115,7 @@ export function SidebarNav({ username }: SidebarNavProps) {
               <span className="text-3xl text-orange-500 ml-1 italic animate-pulse drop-shadow-[0_0_10px_rgba(255,125,0,0.8)]">
                 X
               </span>
-              </span>
+            </span>
           </div>
           <Button
             variant="ghost"
@@ -197,6 +199,10 @@ export function SidebarNav({ username }: SidebarNavProps) {
       </SidebarContent>
       <SidebarFooter className="border-t border-gray-800 p-4 bg-[#0a0e17]">
         <div className="flex flex-col gap-3">
+          {/* Menampilkan username di footer */}
+          <div className="text-center text-sm text-gray-400">
+            Welcome, {username}
+          </div>
           {/* Social Media Icons */}
           <div className="flex justify-center gap-4 py-2">
             <a
@@ -236,10 +242,9 @@ export function SidebarNav({ username }: SidebarNavProps) {
               <span className="sr-only">Website</span>
             </a>
           </div>
-
           {/* Copyright */}
           <div className="text-center text-xs text-gray-500">
-            &copy; {new Date().getFullYear()} AimTzy. All rights reserved.
+            © {new Date().getFullYear()} AimTzy. All rights reserved.
           </div>
         </div>
       </SidebarFooter>
