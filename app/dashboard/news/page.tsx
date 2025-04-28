@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/auth-utils"
+import { getSessionAppRouter } from "@/lib/auth-utils-app";
 import { redirect } from "next/navigation"
 import { Newspaper, Twitter, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -49,7 +49,7 @@ const mockNews = [
 ]
 
 export default async function NewsPage() {
-  const session = await getSession()
+  const session = await getSessionAppRouter()
 
   if (!session) {
     redirect("/login")

@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation"
-import { getSession } from "@/lib/auth-utils"
+import { getSessionAppRouter } from "@/lib/auth-utils-app";
 import { AddAirdropForm } from "@/components/add-airdrop-form"
 import { DashboardHeader } from "@/components/dashboard-header"
 
 export default async function AddAirdropPage() {
-  const session = await getSession()
+  const session = await getSessionAppRouter()
 
   if (!session) {
     redirect("/login")

@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/auth-utils"
+import { getSessionAppRouter } from "@/lib/auth-utils-app";
 import { getChatMessages, getChatRooms } from "@/lib/community-actions"
 import { redirect } from "next/navigation"
 import ChatRoom from "@/components/chat-room"
@@ -10,7 +10,7 @@ interface ChatRoomPageProps {
 }
 
 export default async function ChatRoomPage({ params }: ChatRoomPageProps) {
-  const session = await getSession()
+  const session = await getSessionAppRouter()
 
   if (!session) {
     redirect("/login?redirect=/dashboard/community/chat")

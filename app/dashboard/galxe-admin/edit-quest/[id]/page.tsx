@@ -36,7 +36,7 @@ export default function EditQuestPage() {
         } else {
           setError(response.error || "Failed to fetch quest")
         }
-      } catch (err) {
+      } catch {
         setError("An error occurred while fetching the quest")
       } finally {
         setIsLoading(false)

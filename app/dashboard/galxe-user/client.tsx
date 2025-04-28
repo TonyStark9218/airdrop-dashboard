@@ -38,7 +38,7 @@ export function GalxeUserClient({
   initialCompletions: QuestCompletion[];
   initialError?: string;
 }) {
-  const [quests, setQuests] = useState<Quest[]>(initialQuests);
+  const [quests] = useState<Quest[]>(initialQuests);
   const [completions, setCompletions] = useState<QuestCompletion[]>(initialCompletions);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [expandedQuests, setExpandedQuests] = useState<string[]>([]);
@@ -106,7 +106,7 @@ export function GalxeUserClient({
       } else {
         setError(response.error || "Failed to update quest status");
       }
-    } catch (err) {
+    } catch {
       setError("Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
@@ -334,7 +334,7 @@ export function GalxeUserClient({
                         </li>
                         <li className="flex items-start gap-2 group">
                           <ChevronRight className="h-4 w-4 text-green-400 mt-1 flex-shrink-0 group-hover:scale-110 transition-transform" />
-                          <span>Mark quests as completed after you've finished them.</span>
+                          <span>Mark quests as completed after you&apos;ve finished them.</span>
                         </li>
                       </ul>
                     </div>

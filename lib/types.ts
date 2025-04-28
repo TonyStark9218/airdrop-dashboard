@@ -170,5 +170,5 @@ export interface ApiResponse<T> {
 export interface MongooseLeanDocument {
   _id: string;
   __v: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }

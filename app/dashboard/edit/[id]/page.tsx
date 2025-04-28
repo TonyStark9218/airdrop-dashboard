@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { getSession } from "@/lib/auth-utils"
+import { getSessionAppRouter } from "@/lib/auth-utils-app";
 import { getAirdropById } from "@/lib/airdrop-actions"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { EditAirdropForm } from "@/components/edit-airdrop-form"
@@ -11,7 +11,7 @@ interface EditAirdropPageProps {
 }
 
 export default async function EditAirdropPage({ params }: EditAirdropPageProps) {
-  const session = await getSession()
+  const session = await getSessionAppRouter()
 
   if (!session) {
     redirect("/login")

@@ -83,7 +83,7 @@ export function QuestForm({ initialData, isEditing = false }: QuestFormProps) {
       } else {
         setError(response.error || "An error occurred")
       }
-    } catch (err) {
+    } catch {
       setError("Failed to save quest. Please try again.")
     } finally {
       setIsSubmitting(false)

@@ -34,11 +34,7 @@ import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 
-interface SidebarNavProps {
-  username: string
-}
-
-export function SidebarNav({ username }: SidebarNavProps) {
+export function SidebarNav() {
   const pathname = usePathname()
   const router = useRouter()
   const { toast } = useToast()

@@ -1,8 +1,15 @@
-import mongoose, { Schema, type Document } from "mongoose"
-import type { Quest } from "@/lib/types"
+import mongoose, { Schema, type Document, Types } from "mongoose";
+import type { Quest } from "@/lib/types";
+
+// Define the interface for Quest Document
+export interface QuestDocument extends Omit<Document, "id">, Omit<Quest, "id"> {
+  _id: Types.ObjectId;
+  createdAt: string;
+  updatedAt: string;
+}
 
 // Define the Mongoose schema for Quest
-const QuestSchema = new Schema(
+const QuestSchema = new Schema<QuestDocument>(
   {
     name: { type: String, required: true },
     description: { type: String, required: true },
@@ -18,11 +25,36 @@ const QuestSchema = new Schema(
     completionRate: { type: Number, default: 0 },
   },
   {
-    timestamps: true, // Adds createdAt and updatedAt fields
-  },
-)
+    timestamps: true,
+    toJSON: {
+      transform: (doc, ret) => {
+        ret.createdAt = ret.createdAt.toISOString();
+        ret.updatedAt = ret.updatedAt.toISOString();
+        return ret;
+      },
+    },
+  }
+);
 
 // Create and export the Quest model
-// We need to check if the model already exists to prevent overwriting it
-// This is important in Next.js development with hot reloading
-export default mongoose.models.Quest || mongoose.model<Quest & Document>("Quest", QuestSchema)
+export default mongoose.models.Quest || mongoose.model<QuestDocument>("Quest", QuestSchema);
+
+// Define the type for lean documents (plain objects)
+export type QuestLeanDocument = {
+  _id: Types.ObjectId | string;
+  __v?: number;
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  status: "active" | "inactive";
+  reward: string;
+  rewardAmount: number;
+  rewardType: "XP" | "TOKEN" | "NFT" | "BADGE";
+  link: string;
+  createdBy: string;
+  participants: number;
+  completionRate: number;
+  createdAt: string;
+  updatedAt: string;
+};

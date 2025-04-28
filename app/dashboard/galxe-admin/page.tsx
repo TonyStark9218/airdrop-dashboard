@@ -73,7 +73,7 @@ export default function GalxeAdminPage() {
       } else {
         setError(response.error || "Failed to fetch quests")
       }
-    } catch (err) {
+    } catch {
       setError("An error occurred while fetching quests")
     } finally {
       setIsLoading(false)
@@ -124,7 +124,7 @@ export default function GalxeAdminPage() {
       } else {
         setError(response.error || "Failed to delete quests")
       }
-    } catch (err) {
+    } catch {
       setError("An error occurred while deleting quests")
     } finally {
       setIsLoading(false)
@@ -145,7 +145,7 @@ export default function GalxeAdminPage() {
       } else {
         setError(response.error || "Failed to delete quest")
       }
-    } catch (err) {
+    } catch {
       setError("An error occurred while deleting the quest")
     } finally {
       setIsLoading(false)
@@ -166,7 +166,7 @@ export default function GalxeAdminPage() {
       } else {
         setError(response.error || "Failed to update quest status")
       }
-    } catch (err) {
+    } catch {
       setError("An error occurred while updating quest status")
     } finally {
       setIsLoading(false)

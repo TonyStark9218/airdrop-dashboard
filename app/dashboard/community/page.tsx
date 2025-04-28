@@ -1,10 +1,10 @@
-import { getSession } from "@/lib/auth-utils"
+import { getSessionAppRouter } from "@/lib/auth-utils-app";
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { MessageSquare, Users } from "lucide-react"
 
 export default async function CommunityPage() {
-  const session = await getSession()
+  const session = await getSessionAppRouter()
 
   if (!session) {
     redirect("/login?redirect=/dashboard/community")

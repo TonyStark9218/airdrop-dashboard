@@ -208,17 +208,6 @@ export default function UserSearch({ currentUserId }: UserSearchProps) {
     }
   }
 
-  const getRoleBadge = (role: UserRole) => {
-    switch (role) {
-      case "admin":
-        return <Badge className="bg-red-500/20 text-red-300 border-red-600 text-xs">Admin</Badge>
-      case "moderator":
-        return <Badge className="bg-blue-500/20 text-blue-300 border-blue-600 text-xs">Mod</Badge>
-      default:
-        return null
-    }
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center gap-4">

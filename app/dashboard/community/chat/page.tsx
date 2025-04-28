@@ -1,11 +1,11 @@
-import { getSession } from "@/lib/auth-utils"
+import { getSessionAppRouter } from "@/lib/auth-utils-app";
 import { getChatRooms, initializeChatRooms } from "@/lib/community-actions"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { MessageSquare } from "lucide-react"
 
 export default async function ChatPage() {
-  const session = await getSession()
+  const session = await getSessionAppRouter()
 
   if (!session) {
     redirect("/login?redirect=/dashboard/community/chat")

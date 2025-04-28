@@ -1,9 +1,9 @@
-import { getSession } from "@/lib/auth-utils"
+import { getSessionAppRouter } from "@/lib/auth-utils-app";
 import { redirect } from "next/navigation"
 import UserSearch from "@/components/user-search"
 
 export default async function UsersPage() {
-  const session = await getSession()
+  const session = await getSessionAppRouter()
 
   if (!session) {
     redirect("/login?redirect=/dashboard/community/users")

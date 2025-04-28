@@ -52,8 +52,11 @@ export async function POST(req: NextRequest) {
     delete userResponse.password
 
     return NextResponse.json({ success: true, user: userResponse }, { status: 201 })
-  } catch (error: any) {
-    console.error("Error registering user:", error)
-    return NextResponse.json({ error: "Failed to register user", details: error.message }, { status: 500 })
+  } catch (error) {
+    console.error("Error registering user:", error);
+    return NextResponse.json(
+      { error: "Failed to register user", details: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 }
+    );
   }
 }

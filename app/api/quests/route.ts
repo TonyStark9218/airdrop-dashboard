@@ -4,7 +4,7 @@ import type { QuestCreateInput } from "@/lib/types"
 import { createQuest, getAllQuests } from "@/lib/db-utils"
 
 // GET /api/quests - Get all quests
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const quests = await getAllQuests()
     return NextResponse.json(quests)

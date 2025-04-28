@@ -1,4 +1,3 @@
-// app/dashboard/galxe-user/page.tsx
 import { Suspense } from "react";
 import { getSessionAppRouter } from "@/lib/auth-utils-app";
 import { getAllQuests, getUserQuestCompletions } from "@/lib/quest-service";
@@ -27,7 +26,7 @@ async function fetchData(session: Session) {
     } else {
       completions = completionsResponse.data || [];
     }
-  } catch (err) {
+  } catch {
     initialError = "An error occurred while fetching data";
   }
 

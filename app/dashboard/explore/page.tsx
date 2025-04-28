@@ -1,5 +1,5 @@
 import { SearchBar } from "@/components/search-bar"
-import { getSession } from "@/lib/auth-utils"
+import { getSessionAppRouter } from "@/lib/auth-utils-app";
 import { redirect } from "next/navigation"
 import { getAllAirdrops } from "@/lib/airdrop-actions"
 import { ExploreResults } from "@/components/explore-results"
@@ -23,7 +23,7 @@ const popularCategories = [
 ]
 
 export default async function ExplorePage({ searchParams }: ExplorePageProps) {
-  const session = await getSession()
+  const session = await getSessionAppRouter()
 
   if (!session) {
     redirect("/login")
