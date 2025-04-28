@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import mongoose from "mongoose"
 
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/airdrop-tracker"
@@ -35,6 +36,7 @@ export async function connectToDatabase() {
     global.mongooseConnection.promise = mongoose
       .connect(MONGODB_URI, opts)
       .then((mongooseInstance: typeof mongoose) => {
+        console.log("Connected to MongoDB")
         return mongooseInstance
       })
   }
@@ -43,9 +45,9 @@ export async function connectToDatabase() {
     global.mongooseConnection.conn = await global.mongooseConnection.promise
   } catch (e) {
     global.mongooseConnection.promise = null
+    console.error("Error connecting to MongoDB:", e)
     throw e
   }
 
   return global.mongooseConnection.conn
 }
-

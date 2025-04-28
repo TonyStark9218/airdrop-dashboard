@@ -1,5 +1,5 @@
-// lib/auth-utils.ts
-import { parse } from "cookie";
+// lib/auth-utils-app.ts
+import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import type { Session } from "./types";
 
@@ -9,19 +9,10 @@ const TOKEN_NAME = "auth_token";
 const textEncoder = new TextEncoder();
 const secretKey = textEncoder.encode(JWT_SECRET);
 
-export async function getSessionPagesRouter(cookies: string | undefined): Promise<Session | null> {
-  if (!cookies) {
-    console.log("No cookies found");
-    return {
-      userId: "user-123",
-      username: "AimTzy",
-    };
-  }
+export async function getSessionAppRouter(): Promise<Session | null> {
+  const token = cookies().get(TOKEN_NAME)?.value;
 
-  const parsedCookies = parse(cookies);
-  const token = parsedCookies[TOKEN_NAME];
-
-  console.log("Getting session (Pages Router), token exists:", !!token);
+  console.log("Getting session (App Router), token exists:", !!token);
 
   if (!token) {
     return {
@@ -41,8 +32,4 @@ export async function getSessionPagesRouter(cookies: string | undefined): Promis
     console.error("Session verification error:", error);
     return null;
   }
-}
-
-export async function isAdmin(username: string): Promise<boolean> {
-  return username === "AimTzy";
 }

@@ -4,6 +4,19 @@ import bcrypt from "bcryptjs"
 export interface IUser extends Document {
   username: string
   password: string
+  email?: string
+  profilePicture?: string
+  bio?: string
+  role: "admin" | "moderator" | "member"
+  status: "online" | "away" | "offline"
+  lastActive: Date
+  connections: string[] // Array of user IDs the user is connected to
+  joinedDate: Date
+  settings?: {
+    theme?: string
+    notifications?: boolean
+    language?: string
+  }
   comparePassword(candidatePassword: string): Promise<boolean>
 }
 
@@ -13,10 +26,64 @@ const UserSchema = new Schema<IUser>(
       type: String,
       required: true,
       unique: true,
+      trim: true,
     },
     password: {
       type: String,
       required: true,
+    },
+    email: {
+      type: String,
+      sparse: true, // Allows multiple null values (for existing users)
+      trim: true,
+      lowercase: true,
+      index: true,
+    },
+    profilePicture: {
+      type: String,
+      default: "", // Empty string as default
+    },
+    bio: {
+      type: String,
+      default: "",
+    },
+    role: {
+      type: String,
+      enum: ["admin", "moderator", "member"],
+      default: "member",
+    },
+    status: {
+      type: String,
+      enum: ["online", "away", "offline"],
+      default: "offline",
+    },
+    lastActive: {
+      type: Date,
+      default: Date.now,
+    },
+    connections: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    joinedDate: {
+      type: Date,
+      default: Date.now,
+    },
+    settings: {
+      theme: {
+        type: String,
+        default: "dark",
+      },
+      notifications: {
+        type: Boolean,
+        default: true,
+      },
+      language: {
+        type: String,
+        default: "id", // Default to Indonesian
+      },
     },
   },
   {
@@ -44,4 +111,3 @@ UserSchema.methods.comparePassword = async function (candidatePassword: string):
 
 // Check if model exists before creating a new one (for Next.js hot reloading)
 export const User = mongoose.models.User || mongoose.model<IUser>("User", UserSchema)
-

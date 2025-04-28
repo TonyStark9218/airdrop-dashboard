@@ -16,6 +16,18 @@ export interface User {
   _id: string
   username: string
   password: string
+  profilePicture?: string
+  bio?: string
+  role?: string
+  status?: "online" | "offline" | "away"
+  lastActive?: Date
+  connections?: string[]
+  joinedDate?: Date
+  settings?: {
+    theme: string
+    notifications: boolean
+    language: string
+  }
 }
 
 export interface Session {
@@ -30,6 +42,9 @@ export interface ChatRoomData {
   topic: string
   createdAt: Date
   updatedAt: Date
+  avatar?: string
+  memberCount?: number
+  lastMessage?: MessageData
 }
 
 export interface MessageData {
@@ -40,10 +55,120 @@ export interface MessageData {
   content: string
   createdAt: Date
   updatedAt: Date
+  attachments?: MessageAttachment[]
+  reactions?: MessageReaction[]
+  replyTo?: string
+  isEdited?: boolean
+  isDeleted?: boolean
+  deliveryStatus?: "sent" | "delivered" | "read"
+}
+
+export interface MessageAttachment {
+  type: "image" | "video" | "document" | "audio" | "sticker"
+  url: string
+  name: string
+  size?: number
+  mimeType?: string
+  duration?: number // For audio/video in seconds
+  dimensions?: { width: number; height: number } // For images/videos
+}
+
+export interface MessageReaction {
+  userId: string
+  username: string
+  type: string // emoji
+  timestamp: Date
 }
 
 export interface UserSearchResult {
   _id: string
   username: string
+  profilePicture?: string
+  status?: "online" | "offline" | "away"
+  bio?: string
 }
 
+export interface TypingIndicator {
+  roomId: string
+  userId: string
+  username: string
+  timestamp: Date
+}
+
+export interface VoiceMessage {
+  duration: number
+  url: string
+  waveform?: number[] // Array of amplitude values for waveform visualization
+}
+
+// New Quest related interfaces
+export interface Quest {
+  id: string
+  name: string
+  description: string
+  startDate: string
+  endDate: string
+  status: "active" | "inactive"
+  reward: string
+  rewardAmount: number
+  rewardType: "XP" | "TOKEN" | "NFT" | "BADGE"
+  link: string
+  createdAt: string
+  updatedAt: string
+  createdBy: string
+  participants?: number
+  completionRate?: number
+}
+
+export interface QuestCompletion {
+  id: string
+  questId: string
+  userId: string
+  username: string
+  completed: boolean
+  completedAt?: string
+  updatedAt: string
+}
+
+export interface QuestCreateInput {
+  name: string
+  description: string
+  startDate: string
+  endDate: string
+  status: "active" | "inactive"
+  reward: string
+  rewardAmount: number
+  rewardType: "XP" | "TOKEN" | "NFT" | "BADGE"
+  link: string
+}
+
+export interface QuestUpdateInput {
+  id: string
+  name?: string
+  description?: string
+  startDate?: string
+  endDate?: string
+  status?: "active" | "inactive"
+  reward?: string
+  rewardAmount?: number
+  rewardType?: "XP" | "TOKEN" | "NFT" | "BADGE"
+  link?: string
+}
+
+export interface QuestCompletionInput {
+  questId: string
+  completed: boolean
+}
+
+export interface ApiResponse<T> {
+  success: boolean
+  data?: T
+  error?: string
+  message?: string
+}
+
+export interface MongooseLeanDocument {
+  _id: string;
+  __v: number;
+  [key: string]: any;
+}
