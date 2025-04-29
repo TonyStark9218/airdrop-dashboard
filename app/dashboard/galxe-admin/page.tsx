@@ -33,7 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
-import { getAllQuests, deleteQuest, deleteMultipleQuests, updateQuestsStatus } from "@/lib/quest-service"
+import { deleteQuest, deleteMultipleQuests, updateQuestsStatus } from "@/lib/quest-service"
 import type { Quest } from "@/lib/types"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { format, parseISO } from "date-fns"
@@ -61,25 +61,35 @@ export default function GalxeAdminPage() {
     fetchQuests()
   }, [])
 
+  // Add a refresh function to the admin page to ensure data is up-to-date
   const fetchQuests = async () => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const response = await getAllQuests()
+      // Use cache: 'no-store' to ensure we get fresh data
+      const response = await fetch("/api/quests", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      })
 
-      if (response.success && response.data) {
-        setQuests(response.data)
-      } else {
-        setError(response.error || "Failed to fetch quests")
+      if (!response.ok) {
+        throw new Error(`Failed to fetch quests: ${response.status} ${response.statusText}`)
       }
-    } catch {
-      setError("An error occurred while fetching quests")
+
+      const data = await response.json()
+      setQuests(data)
+    } catch (err) {
+      console.error("Error fetching quests:", err)
+      setError(err instanceof Error ? err.message : "An error occurred while fetching quests")
     } finally {
       setIsLoading(false)
     }
   }
 
+  // Make sure to call this when the refresh button is clicked
   const handleRefresh = async () => {
     setIsRefreshing(true)
     await fetchQuests()

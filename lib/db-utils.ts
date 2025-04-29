@@ -157,6 +157,7 @@ export async function getUserQuestCompletions(userId: string): Promise<QuestComp
   }
 }
 
+// Update the updateQuestCompletion function to properly update quest statistics
 export async function updateQuestCompletion(
   userId: string,
   username: string,
@@ -195,6 +196,9 @@ export async function updateQuestCompletion(
         throw new Error("Failed to update quest completion")
       }
 
+      // Update quest statistics after updating completion
+      await updateQuestStatistics(data.questId)
+
       return convertDocument<QuestCompletion>(updatedCompletion)
     } else {
       // Create new completion
@@ -209,6 +213,9 @@ export async function updateQuestCompletion(
       await newCompletion.save()
       const savedCompletion = newCompletion.toObject()
 
+      // Update quest statistics after creating completion
+      await updateQuestStatistics(data.questId)
+
       return convertDocument<QuestCompletion>(savedCompletion)
     }
   } catch (error) {
@@ -217,7 +224,7 @@ export async function updateQuestCompletion(
   }
 }
 
-// Update quest statistics (participants and completion rate)
+// Improve the updateQuestStatistics function to count participants correctly
 export async function updateQuestStatistics(
   questId: string,
 ): Promise<{ participants: number; completionRate: number }> {
@@ -227,8 +234,13 @@ export async function updateQuestStatistics(
     // Get all completions for this quest
     const completions = await QuestCompletionModel.find({ questId }).lean()
 
+    // Count unique users who have interacted with this quest
     const participants = completions.length
+
+    // Count completions where completed is true
     const completedCount = completions.filter((c: Record<string, unknown>) => c.completed).length
+
+    // Calculate completion rate
     const completionRate = participants > 0 ? Math.round((completedCount / participants) * 100) : 0
 
     // Update quest statistics

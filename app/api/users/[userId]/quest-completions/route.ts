@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getSessionAppRouter } from "@/lib/auth-utils-app";
+import { getSessionAppRouter } from "@/lib/auth-utils-app"
 import type { QuestCompletionInput } from "@/lib/types"
 import { getUserQuestCompletions, updateQuestCompletion, updateQuestStatistics } from "@/lib/db-utils"
 
@@ -20,6 +20,10 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
     }
 
     const completions = await getUserQuestCompletions(userId)
+
+    // Log the completions for debugging
+    console.log(`Fetched ${completions.length} completions for user ${userId}`)
+
     return NextResponse.json(completions)
   } catch (error) {
     console.error("Error in GET /api/users/[userId]/quest-completions:", error)

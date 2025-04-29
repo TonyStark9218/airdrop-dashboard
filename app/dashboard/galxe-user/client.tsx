@@ -111,6 +111,7 @@ export function GalxeUserClient({
           const completionsData = await completionsResponse.json()
           if (Array.isArray(completionsData)) {
             setCompletions(completionsData)
+            console.log("Loaded completions:", completionsData)
           }
         }
       } catch (completionError) {
