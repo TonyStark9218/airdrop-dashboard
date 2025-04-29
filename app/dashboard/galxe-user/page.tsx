@@ -4,8 +4,6 @@ import type { Quest, QuestCompletion } from "@/lib/types"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { GalxeUserClient } from "./client"
-import { PageLoader } from "@/components/loading-spinner"
-import { Suspense } from "react"
 
 async function fetchData(userId: string) {
   let quests: Quest[] = []
@@ -56,21 +54,13 @@ export default async function GalxeUserPage() {
   // Fetch data server-side
   const { quests, completions, initialError } = await fetchData(session.userId)
 
+  // Return the client component directly without Suspense to avoid loading state issues
   return (
-    <Suspense
-      fallback={
-        <div className="container min-h-screen py-8 flex flex-col items-center justify-center">
-          <PageLoader />
-          <p className="text-gray-400 text-center mt-2">Loading quests...</p>
-        </div>
-      }
-    >
-      <GalxeUserClient
-        session={session}
-        initialQuests={quests}
-        initialCompletions={completions}
-        initialError={initialError}
-      />
-    </Suspense>
+    <GalxeUserClient
+      session={session}
+      initialQuests={quests}
+      initialCompletions={completions}
+      initialError={initialError}
+    />
   )
 }

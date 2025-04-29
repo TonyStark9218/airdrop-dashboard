@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { updateQuestCompletion } from "@/lib/quest-service"
 import type { Quest, QuestCompletion, Session } from "@/lib/types"
 import { format, parseISO } from "date-fns"
@@ -49,11 +49,19 @@ export function GalxeUserClient({
   const [success, setSuccess] = useState<string | null>(null)
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [isRetrying, setIsRetrying] = useState(false)
+  const [loadingTimeout, setLoadingTimeout] = useState<NodeJS.Timeout | null>(null)
 
   // Load data on first render if needed
   useEffect(() => {
     if (initialQuests.length === 0 && !isRetrying) {
       fetchQuestsData()
+    }
+
+    // Cleanup function to clear any timeouts
+    return () => {
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout)
+      }
     }
   }, [initialQuests.length, isRetrying])
 
@@ -65,17 +73,34 @@ export function GalxeUserClient({
     }
   }, [success])
 
-  const fetchQuestsData = async () => {
+  const fetchQuestsData = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     setLoadingProgress(0)
     setIsRetrying(true)
 
+    // Set a maximum loading time of 15 seconds
+    const maxLoadingTimeout = setTimeout(() => {
+      setIsLoading(false)
+      setError("Loading timed out. Please try again.")
+      setIsRetrying(false)
+    }, 15000)
+
+    setLoadingTimeout(maxLoadingTimeout)
+
+    let progressInterval: NodeJS.Timeout | null = null
+
     try {
       // Start progress animation
-      const progressInterval = setInterval(() => {
-        setLoadingProgress((prev) => Math.min(prev + 5, 90))
-      }, 100)
+      progressInterval = setInterval(() => {
+        setLoadingProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(progressInterval!)
+            return 90
+          }
+          return prev + 5
+        })
+      }, 200)
 
       // Fetch quests
       const questsResponse = await fetch("/api/quests", {
@@ -89,23 +114,20 @@ export function GalxeUserClient({
         throw new Error(`Failed to fetch quests: ${questsResponse.status} ${questsResponse.statusText}`)
       }
 
-      const questsData = await questsResponse.json()
+      let questsData
+      try {
+        questsData = await questsResponse.json()
+      } catch (jsonError) {
+        console.error("Error parsing quests JSON:", jsonError)
+        throw new Error("Invalid response format from server")
+      }
 
       if (!Array.isArray(questsData)) {
         console.error("Invalid quests data format:", questsData)
         throw new Error("Invalid data format received from API")
       }
 
-      // Check if we have any active quests
-      const activeQuests = questsData.filter((quest) => quest.status === "active")
-      if (activeQuests.length === 0) {
-        setQuests([])
-        clearInterval(progressInterval)
-        setLoadingProgress(100)
-        setSuccess("No active quests available at the moment.")
-        return
-      }
-
+      // Set quests regardless of whether there are active ones or not
       setQuests(questsData)
 
       // Fetch completions
@@ -129,23 +151,35 @@ export function GalxeUserClient({
         // Don't fail the whole operation if just completions fail
       }
 
-      clearInterval(progressInterval)
-      setLoadingProgress(100)
-      setSuccess("Data loaded successfully!")
+      // Check if we have any active quests after setting the data
+      const activeQuests = questsData.filter((quest: Quest) => quest.status === "active")
+      if (activeQuests.length === 0) {
+        setSuccess("No active quests available at the moment.")
+      } else {
+        setSuccess("Data loaded successfully!")
+      }
 
       // Log success for debugging
       console.log("Successfully loaded quests:", questsData.length)
     } catch (err) {
       console.error("Error fetching data:", err)
       setError(`${err instanceof Error ? err.message : "Unknown error"}`)
-      setLoadingProgress(100) // Ensure we stop the loading state even on error
     } finally {
+      // Clear the intervals and timeouts
+      if (progressInterval) clearInterval(progressInterval)
+      if (maxLoadingTimeout) clearTimeout(maxLoadingTimeout)
+      setLoadingTimeout(null)
+
+      // Complete the progress bar
+      setLoadingProgress(100)
+
+      // Delay hiding the loader slightly for a smoother transition
       setTimeout(() => {
         setIsLoading(false)
         setIsRetrying(false)
       }, 500)
     }
-  }
+  }, [session.userId])
 
   const toggleQuestExpansion = (id: string) => {
     setExpandedQuests((prev) => (prev.includes(id) ? prev.filter((questId) => questId !== id) : [...prev, id]))
@@ -221,6 +255,15 @@ export function GalxeUserClient({
             indicatorClassName="bg-gradient-to-r from-blue-500 to-purple-500"
           />
           <p className="text-gray-400 text-center mt-2">Loading quests... {loadingProgress}%</p>
+          <Button
+            onClick={() => {
+              setIsLoading(false)
+              setError("Loading cancelled. Please try again.")
+            }}
+            className="mt-4 mx-auto block bg-red-600 hover:bg-red-700"
+          >
+            Cancel
+          </Button>
         </div>
       </div>
     )
