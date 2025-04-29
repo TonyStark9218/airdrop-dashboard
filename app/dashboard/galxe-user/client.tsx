@@ -1,15 +1,15 @@
 // app/dashboard/galxe-user/client.tsx
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { updateQuestCompletion } from "@/lib/quest-service";
-import type { Quest, QuestCompletion, Session } from "@/lib/types";
-import { format, parseISO } from "date-fns";
-import { Checkbox } from "@/components/ui/checkbox";
-import { AnimatedElement } from "@/components/animated-element";
-import { PageLoader } from "@/components/loading-spinner";
-import { motion, AnimatePresence } from "framer-motion";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react"
+import { updateQuestCompletion } from "@/lib/quest-service"
+import type { Quest, QuestCompletion, Session } from "@/lib/types"
+import { format, parseISO } from "date-fns"
+import { Checkbox } from "@/components/ui/checkbox"
+import { AnimatedElement } from "@/components/animated-element"
+import { PageLoader } from "@/components/loading-spinner"
+import { motion, AnimatePresence } from "framer-motion"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   ExternalLink,
   Search,
@@ -20,12 +20,12 @@ import {
   ChevronDown,
   Award,
   AlertCircle,
-} from "lucide-react";
-import { Input } from "@/components/ui/input";
-import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+} from "lucide-react"
+import { Input } from "@/components/ui/input"
+import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export function GalxeUserClient({
   session,
@@ -33,110 +33,159 @@ export function GalxeUserClient({
   initialCompletions,
   initialError,
 }: {
-  session: Session;
-  initialQuests: Quest[];
-  initialCompletions: QuestCompletion[];
-  initialError?: string;
+  session: Session
+  initialQuests: Quest[]
+  initialCompletions: QuestCompletion[]
+  initialError?: string
 }) {
-  const [quests] = useState<Quest[]>(initialQuests);
-  const [completions, setCompletions] = useState<QuestCompletion[]>(initialCompletions);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [expandedQuests, setExpandedQuests] = useState<string[]>([]);
-  const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "pending">("all");
-  const [isLoading, setIsLoading] = useState(true); // Mulai dengan loading true
-  const [error, setError] = useState<string | null>(initialError || null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [loadingProgress, setLoadingProgress] = useState(0); // Progress bar state
+  const [quests, setQuests] = useState<Quest[]>(initialQuests)
+  const [completions, setCompletions] = useState<QuestCompletion[]>(initialCompletions)
+  const [searchTerm, setSearchTerm] = useState<string>("")
+  const [expandedQuests, setExpandedQuests] = useState<string[]>([])
+  const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "pending">("all")
+  const [isLoading, setIsLoading] = useState(true) // Mulai dengan loading true
+  const [error, setError] = useState<string | null>(initialError || null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [loadingProgress, setLoadingProgress] = useState(0) // Progress bar state
 
   // Simulasi loading dengan progress bar
   useEffect(() => {
-    // Kalo data udah ada (initialQuests dan initialCompletions), kita simulasi loading
+    // If we already have data from server-side props, simulate loading
     if (initialQuests.length > 0 || initialCompletions.length > 0) {
       const interval = setInterval(() => {
         setLoadingProgress((prev) => {
           if (prev >= 100) {
-            clearInterval(interval);
-            setIsLoading(false);
-            return 100;
+            clearInterval(interval)
+            setIsLoading(false)
+            return 100
           }
-          return prev + 10;
-        });
-      }, 200); // Update progress setiap 200ms
+          return prev + 10
+        })
+      }, 200)
 
-      return () => clearInterval(interval);
+      return () => clearInterval(interval)
     } else {
-      setIsLoading(false);
+      // If no initial data, we need to handle the error more gracefully
+      setIsLoading(false)
+      if (initialError) {
+        setError(`Error loading quests: ${initialError}`)
+      }
     }
-  }, [initialQuests, initialCompletions]);
+  }, [initialQuests, initialCompletions, initialError])
 
   // Bersihin error kalo nggak ada error baru
   useEffect(() => {
-    if (!error) return;
-    const timer = setTimeout(() => setError(null), 5000); // Hilangin error setelah 5 detik
-    return () => clearTimeout(timer);
-  }, [error]);
+    if (!error) return
+    const timer = setTimeout(() => setError(null), 5000) // Hilangin error setelah 5 detik
+    return () => clearTimeout(timer)
+  }, [error])
 
   const toggleQuestExpansion = (id: string) => {
-    setExpandedQuests((prev) => (prev.includes(id) ? prev.filter((questId) => questId !== id) : [...prev, id]));
-  };
+    setExpandedQuests((prev) => (prev.includes(id) ? prev.filter((questId) => questId !== id) : [...prev, id]))
+  }
 
   const toggleQuestCompletion = async (questId: string, currentStatus: boolean) => {
-    setError(null);
-    setSuccess(null);
-    setIsLoading(true);
+    setError(null)
+    setSuccess(null)
+    setIsLoading(true)
 
     try {
       const response = await updateQuestCompletion(session.userId, {
         questId,
         completed: !currentStatus,
-      });
+      })
 
       if (response.success && response.data) {
         setCompletions((prev) => {
-          const existingIndex = prev.findIndex((c) => c.questId === questId);
+          const existingIndex = prev.findIndex((c) => c.questId === questId)
           if (existingIndex >= 0) {
-            const updated = [...prev];
-            updated[existingIndex] = response.data!;
-            return updated;
+            const updated = [...prev]
+            updated[existingIndex] = response.data!
+            return updated
           } else {
-            return [...prev, response.data!];
+            return [...prev, response.data!]
           }
-        });
-        setSuccess(`Quest marked as ${!currentStatus ? "completed" : "pending"}`);
+        })
+        setSuccess(`Quest marked as ${!currentStatus ? "completed" : "pending"}`)
       } else {
-        setError(response.error || "Failed to update quest status");
+        setError(response.error || "Failed to update quest status")
       }
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError("Something went wrong. Please try again.")
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const getQuestCompletionStatus = (questId: string): boolean => {
-    const completion = completions.find((c) => c.questId === questId);
-    return completion?.completed || false;
-  };
+    const completion = completions.find((c) => c.questId === questId)
+    return completion?.completed || false
+  }
 
   const filteredQuests = quests.filter((quest) => {
-    if (quest.status !== "active") return false;
+    if (quest.status !== "active") return false
 
     const matchesSearch =
       quest.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      quest.description.toLowerCase().includes(searchTerm.toLowerCase());
+      quest.description.toLowerCase().includes(searchTerm.toLowerCase())
 
-    const isCompleted = getQuestCompletionStatus(quest.id);
+    const isCompleted = getQuestCompletionStatus(quest.id)
     const matchesStatus =
       statusFilter === "all" ||
       (statusFilter === "completed" && isCompleted) ||
-      (statusFilter === "pending" && !isCompleted);
+      (statusFilter === "pending" && !isCompleted)
 
-    return matchesSearch && matchesStatus;
-  });
+    return matchesSearch && matchesStatus
+  })
 
-  const totalQuests = quests.filter((q) => q.status === "active").length;
-  const completedQuests = completions.filter((c) => c.completed).length;
-  const completionPercentage = totalQuests > 0 ? Math.round((completedQuests / totalQuests) * 100) : 0;
+  const totalQuests = quests.filter((q) => q.status === "active").length
+  const completedQuests = completions.filter((c) => c.completed).length
+  const completionPercentage = totalQuests > 0 ? Math.round((completedQuests / totalQuests) * 100) : 0
+
+  const retryLoading = async () => {
+    setIsLoading(true)
+    setError(null)
+    setLoadingProgress(0)
+
+    try {
+      // Simulate progress while fetching
+      const progressInterval = setInterval(() => {
+        setLoadingProgress((prev) => Math.min(prev + 5, 90))
+      }, 200)
+
+      // Fetch quests directly from client side as a fallback
+      const response = await fetch("/api/quests")
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      if (data && Array.isArray(data)) {
+        // Update quests state with the fetched data
+        setQuests(data)
+
+        // Also try to fetch completions
+        const completionsResponse = await fetch(`/api/users/${session.userId}/quest-completions`)
+        if (completionsResponse.ok) {
+          const completionsData = await completionsResponse.json()
+          if (completionsData && Array.isArray(completionsData)) {
+            setCompletions(completionsData)
+          }
+        }
+
+        setSuccess("Data loaded successfully!")
+      } else {
+        throw new Error("Invalid data format received from API")
+      }
+
+      clearInterval(progressInterval)
+      setLoadingProgress(100)
+      setTimeout(() => setIsLoading(false), 500)
+    } catch (err) {
+      setError(`Failed to load data: ${err instanceof Error ? err.message : "Unknown error"}`)
+      setIsLoading(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -151,7 +200,7 @@ export function GalxeUserClient({
           <p className="text-gray-400 text-center mt-2">Loading quests... {loadingProgress}%</p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -180,7 +229,15 @@ export function GalxeUserClient({
           <Alert variant="destructive" className="bg-red-900/20 border-red-800">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription className="flex flex-col gap-2">
+              <span>{error}</span>
+              <button
+                onClick={retryLoading}
+                className="text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm self-start mt-2"
+              >
+                Retry
+              </button>
+            </AlertDescription>
           </Alert>
         )}
 
@@ -237,7 +294,7 @@ export function GalxeUserClient({
                       <div className="text-center py-8 text-gray-400">No quests found matching your search</div>
                     ) : (
                       filteredQuests.map((quest, index) => {
-                        const isCompleted = getQuestCompletionStatus(quest.id);
+                        const isCompleted = getQuestCompletionStatus(quest.id)
 
                         return (
                           <AnimatedElement key={quest.id} animation="fadeUp" delay={0.3 + index * 0.1}>
@@ -306,7 +363,7 @@ export function GalxeUserClient({
                               </AnimatePresence>
                             </div>
                           </AnimatedElement>
-                        );
+                        )
                       })
                     )}
                   </div>
@@ -384,8 +441,8 @@ export function GalxeUserClient({
                       completions
                         .filter((c) => c.completed)
                         .map((completion) => {
-                          const quest = quests.find((q) => q.id === completion.questId);
-                          if (!quest) return null;
+                          const quest = quests.find((q) => q.id === completion.questId)
+                          if (!quest) return null
 
                           return (
                             <div
@@ -395,7 +452,7 @@ export function GalxeUserClient({
                               <div className="text-sm text-white">{quest.name}</div>
                               <div className="text-sm text-yellow-400">{quest.reward}</div>
                             </div>
-                          );
+                          )
                         })
                     )}
                   </div>
@@ -406,5 +463,5 @@ export function GalxeUserClient({
         </div>
       </div>
     </div>
-  );
+  )
 }
