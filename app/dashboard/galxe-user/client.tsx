@@ -1,4 +1,3 @@
-// app/dashboard/galxe-user/client.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -20,12 +19,14 @@ import {
   ChevronDown,
   Award,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
 
 export function GalxeUserClient({
   session,
@@ -43,42 +44,96 @@ export function GalxeUserClient({
   const [searchTerm, setSearchTerm] = useState<string>("")
   const [expandedQuests, setExpandedQuests] = useState<string[]>([])
   const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "pending">("all")
-  const [isLoading, setIsLoading] = useState(true) // Mulai dengan loading true
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(initialError || null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [loadingProgress, setLoadingProgress] = useState(0) // Progress bar state
+  const [loadingProgress, setLoadingProgress] = useState(0)
+  const [isRetrying, setIsRetrying] = useState(false)
 
-  // Simulasi loading dengan progress bar
+  // Load data on first render if needed
   useEffect(() => {
-    // If we already have data from server-side props, simulate loading
-    if (initialQuests.length > 0 || initialCompletions.length > 0) {
-      const interval = setInterval(() => {
-        setLoadingProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(interval)
-            setIsLoading(false)
-            return 100
-          }
-          return prev + 10
-        })
-      }, 200)
-
-      return () => clearInterval(interval)
-    } else {
-      // If no initial data, we need to handle the error more gracefully
-      setIsLoading(false)
-      if (initialError) {
-        setError(`Error loading quests: ${initialError}`)
-      }
+    if (initialQuests.length === 0 && !isRetrying) {
+      fetchQuestsData()
     }
-  }, [initialQuests, initialCompletions, initialError])
+  }, [initialQuests.length, isRetrying])
 
-  // Bersihin error kalo nggak ada error baru
+  // Clear success message after 5 seconds
   useEffect(() => {
-    if (!error) return
-    const timer = setTimeout(() => setError(null), 5000) // Hilangin error setelah 5 detik
-    return () => clearTimeout(timer)
-  }, [error])
+    if (success) {
+      const timer = setTimeout(() => setSuccess(null), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [success])
+
+  const fetchQuestsData = async () => {
+    setIsLoading(true)
+    setError(null)
+    setLoadingProgress(0)
+    setIsRetrying(true)
+
+    try {
+      // Start progress animation
+      const progressInterval = setInterval(() => {
+        setLoadingProgress((prev) => Math.min(prev + 5, 90))
+      }, 100)
+
+      // Fetch quests
+      const questsResponse = await fetch("/api/quests", {
+        method: "GET",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      })
+
+      if (!questsResponse.ok) {
+        throw new Error(`Failed to fetch quests: ${questsResponse.status} ${questsResponse.statusText}`)
+      }
+
+      const questsData = await questsResponse.json()
+
+      if (!Array.isArray(questsData)) {
+        console.error("Invalid quests data format:", questsData)
+        throw new Error("Invalid data format received from API")
+      }
+
+      setQuests(questsData)
+
+      // Fetch completions
+      try {
+        const completionsResponse = await fetch(`/api/users/${session.userId}/quest-completions`, {
+          method: "GET",
+          headers: {
+            "Cache-Control": "no-cache",
+          },
+        })
+
+        if (completionsResponse.ok) {
+          const completionsData = await completionsResponse.json()
+          if (Array.isArray(completionsData)) {
+            setCompletions(completionsData)
+          }
+        }
+      } catch (completionError) {
+        console.warn("Error fetching completions:", completionError)
+        // Don't fail the whole operation if just completions fail
+      }
+
+      clearInterval(progressInterval)
+      setLoadingProgress(100)
+      setSuccess("Data loaded successfully!")
+
+      // Log success for debugging
+      console.log("Successfully loaded quests:", questsData.length)
+    } catch (err) {
+      console.error("Error fetching data:", err)
+      setError(`${err instanceof Error ? err.message : "Unknown error"}`)
+    } finally {
+      setTimeout(() => {
+        setIsLoading(false)
+        setIsRetrying(false)
+      }, 500)
+    }
+  }
 
   const toggleQuestExpansion = (id: string) => {
     setExpandedQuests((prev) => (prev.includes(id) ? prev.filter((questId) => questId !== id) : [...prev, id]))
@@ -110,7 +165,8 @@ export function GalxeUserClient({
       } else {
         setError(response.error || "Failed to update quest status")
       }
-    } catch {
+    } catch (err) {
+      console.error("Error updating completion:", err)
       setError("Something went wrong. Please try again.")
     } finally {
       setIsLoading(false)
@@ -142,51 +198,6 @@ export function GalxeUserClient({
   const completedQuests = completions.filter((c) => c.completed).length
   const completionPercentage = totalQuests > 0 ? Math.round((completedQuests / totalQuests) * 100) : 0
 
-  const retryLoading = async () => {
-    setIsLoading(true)
-    setError(null)
-    setLoadingProgress(0)
-
-    try {
-      // Simulate progress while fetching
-      const progressInterval = setInterval(() => {
-        setLoadingProgress((prev) => Math.min(prev + 5, 90))
-      }, 200)
-
-      // Fetch quests directly from client side as a fallback
-      const response = await fetch("/api/quests")
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`)
-      }
-
-      const data = await response.json()
-      if (data && Array.isArray(data)) {
-        // Update quests state with the fetched data
-        setQuests(data)
-
-        // Also try to fetch completions
-        const completionsResponse = await fetch(`/api/users/${session.userId}/quest-completions`)
-        if (completionsResponse.ok) {
-          const completionsData = await completionsResponse.json()
-          if (completionsData && Array.isArray(completionsData)) {
-            setCompletions(completionsData)
-          }
-        }
-
-        setSuccess("Data loaded successfully!")
-      } else {
-        throw new Error("Invalid data format received from API")
-      }
-
-      clearInterval(progressInterval)
-      setLoadingProgress(100)
-      setTimeout(() => setIsLoading(false), 500)
-    } catch (err) {
-      setError(`Failed to load data: ${err instanceof Error ? err.message : "Unknown error"}`)
-      setIsLoading(false)
-    }
-  }
-
   if (isLoading) {
     return (
       <div className="container min-h-screen py-8 flex flex-col items-center justify-center">
@@ -212,15 +223,26 @@ export function GalxeUserClient({
               <h1 className="text-3xl font-bold text-white">GALXE Quests</h1>
               <p className="text-gray-400 mt-1">Complete quests to earn rewards</p>
             </div>
-            <div className="relative w-full md:w-64">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-              <Input
-                type="search"
-                placeholder="Search quests..."
-                className="pl-10 bg-[#0f1218] border-gray-800 text-white"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                onClick={fetchQuestsData}
+                className="relative border-gray-800 bg-[#0f1218] hover:bg-[#1a1f2e]"
+                disabled={isLoading}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+              <div className="relative w-full md:w-64">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                <Input
+                  type="search"
+                  placeholder="Search quests..."
+                  className="pl-10 bg-[#0f1218] border-gray-800 text-white"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
           </div>
         </AnimatedElement>
@@ -231,12 +253,13 @@ export function GalxeUserClient({
             <AlertTitle>Error</AlertTitle>
             <AlertDescription className="flex flex-col gap-2">
               <span>{error}</span>
-              <button
-                onClick={retryLoading}
+              <Button
+                onClick={fetchQuestsData}
                 className="text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm self-start mt-2"
+                disabled={isLoading}
               >
-                Retry
-              </button>
+                {isLoading ? "Retrying..." : "Retry"}
+              </Button>
             </AlertDescription>
           </Alert>
         )}
@@ -291,7 +314,23 @@ export function GalxeUserClient({
                 <CardContent>
                   <div className="space-y-4">
                     {filteredQuests.length === 0 ? (
-                      <div className="text-center py-8 text-gray-400">No quests found matching your search</div>
+                      <div className="text-center py-8 text-gray-400">
+                        {quests.length === 0 ? (
+                          <div className="flex flex-col items-center gap-4">
+                            <p>No quests available. Try refreshing the data.</p>
+                            <Button
+                              onClick={fetchQuestsData}
+                              className="bg-blue-600 hover:bg-blue-700"
+                              disabled={isLoading}
+                            >
+                              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+                              Refresh Data
+                            </Button>
+                          </div>
+                        ) : (
+                          "No quests found matching your search"
+                        )}
+                      </div>
                     ) : (
                       filteredQuests.map((quest, index) => {
                         const isCompleted = getQuestCompletionStatus(quest.id)

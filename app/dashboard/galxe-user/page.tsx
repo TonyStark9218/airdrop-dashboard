@@ -1,49 +1,41 @@
-import { Suspense } from "react"
 import { getSessionAppRouter } from "@/lib/auth-utils-app"
-import { getAllQuests, getUserQuestCompletions } from "@/lib/quest-service"
-import type { Quest, QuestCompletion, Session } from "@/lib/types"
+import { getAllQuests, getUserQuestCompletions } from "@/lib/db-utils"
+import type { Quest, QuestCompletion } from "@/lib/types"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { GalxeUserClient } from "./client"
 import { PageLoader } from "@/components/loading-spinner"
+import { Suspense } from "react"
 
-async function fetchData(session: Session) {
+async function fetchData(userId: string) {
   let quests: Quest[] = []
   let completions: QuestCompletion[] = []
   let initialError: string | undefined
 
   try {
     // First try to fetch quests
-    const questsResponse = await getAllQuests()
-    if (!questsResponse.success || !questsResponse.data) {
-      initialError = questsResponse.error || "Failed to fetch quests"
-      console.error("Error fetching quests:", initialError)
-    } else {
-      quests = questsResponse.data
+    try {
+      quests = await getAllQuests()
+      console.log("Server-side fetched quests:", quests.length)
+    } catch (questError) {
+      console.error("Error fetching quests server-side:", questError)
+      initialError = "Failed to fetch quests. Please try refreshing."
     }
 
     // Then try to fetch completions
     try {
-      const completionsResponse = await getUserQuestCompletions(session.userId)
-      if (!completionsResponse.success) {
-        console.error("Error fetching completions:", completionsResponse.error)
-        // Don't override quest error if it exists
-        if (!initialError) {
-          initialError = completionsResponse.error || "Failed to fetch quest completions"
-        }
-      } else {
-        completions = completionsResponse.data || []
-      }
+      completions = await getUserQuestCompletions(userId)
+      console.log("Server-side fetched completions:", completions.length)
     } catch (completionError) {
-      console.error("Exception fetching completions:", completionError)
+      console.error("Error fetching completions server-side:", completionError)
       // Don't override quest error if it exists
       if (!initialError) {
-        initialError = "An error occurred while fetching completion data"
+        initialError = "Failed to fetch quest completions. Some features may be limited."
       }
     }
   } catch (error) {
     console.error("Exception in fetchData:", error)
-    initialError = "An error occurred while fetching data"
+    initialError = "An error occurred while fetching data. Please try refreshing."
   }
 
   return { quests, completions, initialError }
@@ -61,7 +53,8 @@ export default async function GalxeUserPage() {
     )
   }
 
-  const { quests, completions, initialError } = await fetchData(session)
+  // Fetch data server-side
+  const { quests, completions, initialError } = await fetchData(session.userId)
 
   return (
     <Suspense
