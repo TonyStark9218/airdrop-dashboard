@@ -157,7 +157,7 @@ export async function getUserQuestCompletions(userId: string): Promise<QuestComp
   }
 }
 
-// Update the updateQuestCompletion function to properly update quest statistics
+// Modify the updateQuestCompletion function to ensure default status is "pending"
 export async function updateQuestCompletion(
   userId: string,
   username: string,
@@ -201,12 +201,13 @@ export async function updateQuestCompletion(
 
       return convertDocument<QuestCompletion>(updatedCompletion)
     } else {
-      // Create new completion
+      // Create new completion - always set to pending (completed: false) by default
+      // Only set to completed: true if explicitly requested
       const newCompletion = new QuestCompletionModel({
         questId: data.questId,
         userId,
         username,
-        completed: data.completed,
+        completed: data.completed, // This will be false by default unless explicitly set to true
         completedAt: data.completed ? now : null,
       })
 
