@@ -2,10 +2,8 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
-import { searchUsers } from "@/lib/community-actions"
-import type { UserSearchResult } from "@/lib/types"
-import { Search, Users, X, Check, MessageSquare, UserPlus, Filter, ChevronDown } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import { Search, Users, X, Check, MessageSquare, UserPlus, Filter, ChevronDown, Loader2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from "@/components/ui/skeleton"
 import { motion, AnimatePresence } from "framer-motion"
 import { useToast } from "@/hooks/use-toast"
+import { useDebounce } from "@/hooks/use-debounce"
 
 interface UserSearchProps {
   currentUserId: string
@@ -23,109 +22,61 @@ interface UserSearchProps {
 type UserStatus = "online" | "away" | "offline"
 type UserRole = "admin" | "moderator" | "member"
 
-interface EnhancedUserResult extends UserSearchResult {
-  status: UserStatus
-  role: UserRole
+interface UserSearchResult {
+  _id: string
+  username: string
+  profilePicture?: string
   bio?: string
-  joinedDate?: string
-  connections?: number
-  isFollowing?: boolean
-  avatarUrl?: string
+  role: UserRole
+  status: UserStatus
+  lastActive: Date
+  connections: number
+  joinedDate: string
+  isFollowing: boolean
 }
 
 export default function UserSearch({ currentUserId }: UserSearchProps) {
   const [query, setQuery] = useState("")
-  const [results, setResults] = useState<EnhancedUserResult[]>([])
+  const debouncedQuery = useDebounce(query, 300)
+  const [results, setResults] = useState<UserSearchResult[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [hasSearched, setHasSearched] = useState(false)
   const [activeTab, setActiveTab] = useState("all")
   const [filterOpen, setFilterOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<UserStatus | "all">("all")
+  const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all")
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
   const { toast } = useToast()
+  // Hapus const { session, loading } = useSessionAppRouter()
+  // const { session, loading } = useSessionAppRouter()
 
-  // Mock popular users for suggestions
-  const popularUsers: EnhancedUserResult[] = [
-    {
-      _id: "user1",
-      username: "CryptoWhale",
-      status: "online",
-      role: "admin",
-      bio: "Crypto investor since 2013. Bitcoin maximalist.",
-      joinedDate: "2022-01-15",
-      connections: 1243,
-      isFollowing: true,
-      avatarUrl: "/avatars/crypto-whale.jpg",
-    },
-    {
-      _id: "user2",
-      username: "EthereumQueen",
-      status: "online",
-      role: "moderator",
-      bio: "ETH developer and DeFi enthusiast",
-      joinedDate: "2022-03-22",
-      connections: 876,
-      isFollowing: false,
-      avatarUrl: "/avatars/eth-queen.jpg",
-    },
-    {
-      _id: "user3",
-      username: "AirdropHunter",
-      status: "away",
-      role: "member",
-      bio: "Finding the best airdrops since 2021",
-      joinedDate: "2022-05-10",
-      connections: 542,
-      isFollowing: true,
-      avatarUrl: "/avatars/airdrop-hunter.jpg",
-    },
-    {
-      _id: "user4",
-      username: "TokenTrader",
-      status: "offline",
-      role: "member",
-      bio: "Full-time crypto trader and analyst",
-      joinedDate: "2022-02-18",
-      connections: 329,
-      isFollowing: false,
-      avatarUrl: "/avatars/token-trader.jpg",
-    },
-  ]
-
-  useEffect(() => {
-    // Show popular users when no search is performed
-    if (!hasSearched) {
-      setResults(popularUsers)
-    }
-  }, [hasSearched])
-
-  const handleSearch = async () => {
-    if (!query.trim() || query.length < 2) return
-
+  // Fetch users function - defined with useCallback to avoid dependency issues
+  const fetchUsers = useCallback(async () => {
     setIsLoading(true)
-    setHasSearched(true)
 
     try {
-      const response = await searchUsers(query)
-      if (response.success) {
-        // Filter out the current user from results
-        const filteredResults = response.users
-          .filter((user) => user._id !== currentUserId)
-          .map((user) => ({
-            ...user,
-            status: ["online", "away", "offline"][Math.floor(Math.random() * 3)] as UserStatus,
-            role: ["admin", "moderator", "member"][Math.floor(Math.random() * 3)] as UserRole,
-            bio: `Crypto enthusiast and blockchain explorer`,
-            joinedDate: new Date(Date.now() - Math.random() * 10000000000).toISOString().split("T")[0],
-            connections: Math.floor(Math.random() * 1000),
-            isFollowing: Math.random() > 0.5,
-          }))
-        setResults(filteredResults)
+      // Build query parameters
+      const params = new URLSearchParams()
+      if (debouncedQuery) params.append("q", debouncedQuery)
+      if (statusFilter !== "all") params.append("status", statusFilter)
+      if (roleFilter !== "all") params.append("role", roleFilter)
+      params.append("tab", activeTab)
+      params.append("page", page.toString())
+      params.append("limit", "10")
+      params.append("userId", currentUserId) // Pass the current user ID for filtering
+
+      const response = await fetch(`/api/users/search?${params.toString()}`)
+      const data = await response.json()
+
+      if (data.success) {
+        setResults(data.users)
+        setTotalPages(data.pagination.pages)
       } else {
-        console.error("Search error:", response.message)
+        console.error("Search error:", data.error)
         toast({
           title: "Search Error",
-          description: response.message || "Failed to search users",
+          description: data.error || "Failed to search users",
           variant: "destructive",
         })
       }
@@ -139,6 +90,18 @@ export default function UserSearch({ currentUserId }: UserSearchProps) {
     } finally {
       setIsLoading(false)
     }
+  }, [debouncedQuery, statusFilter, roleFilter, activeTab, page, currentUserId, toast])
+
+  // Fetch users when query, filters, or tab changes
+  useEffect(() => {
+    fetchUsers()
+  }, [fetchUsers])
+
+  // Listen for user status changes
+
+  const handleSearch = () => {
+    setPage(1) // Reset to first page on new search
+    fetchUsers()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -147,18 +110,42 @@ export default function UserSearch({ currentUserId }: UserSearchProps) {
     }
   }
 
-  const handleConnect = (userId: string) => {
-    // Toggle connection status
-    setResults((prev) => prev.map((user) => (user._id === userId ? { ...user, isFollowing: !user.isFollowing } : user)))
+  const handleConnect = async (userId: string) => {
+    try {
+      const response = await fetch("/api/users/connect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId }),
+      })
 
-    // Show toast
-    const user = results.find((u) => u._id === userId)
-    if (user) {
+      const data = await response.json()
+
+      if (data.success) {
+        // Update local state
+        setResults((prev) =>
+          prev.map((user) => (user._id === userId ? { ...user, isFollowing: data.connected } : user)),
+        )
+
+        // Show toast
+        toast({
+          title: data.connected ? "Connected" : "Disconnected",
+          description: data.message,
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to update connection",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error connecting to user:", error)
       toast({
-        title: user.isFollowing ? "Disconnected" : "Connected",
-        description: user.isFollowing
-          ? `You are no longer following ${user.username}`
-          : `You are now following ${user.username}`,
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
       })
     }
   }
@@ -190,13 +177,6 @@ export default function UserSearch({ currentUserId }: UserSearchProps) {
     setSelectedUsers([])
   }
 
-  const filteredResults = results.filter((user) => {
-    if (activeTab === "all") return statusFilter === "all" || user.status === statusFilter
-    if (activeTab === "following") return user.isFollowing && (statusFilter === "all" || user.status === statusFilter)
-    if (activeTab === "suggested") return !user.isFollowing && (statusFilter === "all" || user.status === statusFilter)
-    return true
-  })
-
   const getStatusColor = (status: UserStatus) => {
     switch (status) {
       case "online":
@@ -207,6 +187,19 @@ export default function UserSearch({ currentUserId }: UserSearchProps) {
         return "bg-gray-500"
     }
   }
+
+  // Show loading state while session is loading
+  // Hapus bagian ini:
+  // if (loading) {
+  //   return (
+  //     <div className="flex justify-center items-center h-64">
+  //       <div className="flex flex-col items-center gap-4">
+  //         <div className="h-12 w-12 rounded-full border-4 border-t-transparent border-blue-500 animate-spin" />
+  //         <p className="text-gray-400">Loading user data...</p>
+  //       </div>
+  //     </div>
+  //   )
+  // }
 
   return (
     <div className="space-y-6">
@@ -231,14 +224,9 @@ export default function UserSearch({ currentUserId }: UserSearchProps) {
         <div className="flex items-center gap-2">
           <Button
             onClick={handleSearch}
-            disabled={isLoading || query.length < 2}
-            className="bg-blue-600 text-white rounded-lg px-4 py-2 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 min-w-[100px]"
+            className="bg-blue-600 text-white rounded-lg px-4 py-2 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[100px]"
           >
-            {isLoading ? (
-              <div className="h-5 w-5 rounded-full border-2 border-t-transparent border-white animate-spin mx-auto" />
-            ) : (
-              "Search"
-            )}
+            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Search"}
           </Button>
 
           <div className="relative">
@@ -270,9 +258,7 @@ export default function UserSearch({ currentUserId }: UserSearchProps) {
                                 "All Statuses"
                               ) : (
                                 <>
-                                  <span
-                                    className={`h-2 w-2 rounded-full ${getStatusColor(statusFilter as UserStatus)}`}
-                                  />
+                                  <span className={`h-2 w-2 rounded-full ${getStatusColor(statusFilter)}`} />
                                   {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
                                 </>
                               )}
@@ -294,6 +280,26 @@ export default function UserSearch({ currentUserId }: UserSearchProps) {
                             <span className="h-2 w-2 rounded-full bg-gray-500 mr-2" />
                             Offline
                           </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">Role</label>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between border-gray-700 bg-gray-900">
+                            {roleFilter === "all"
+                              ? "All Roles"
+                              : roleFilter.charAt(0).toUpperCase() + roleFilter.slice(1)}
+                            <ChevronDown className="h-4 w-4 opacity-50" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-full bg-gray-800 border-gray-700">
+                          <DropdownMenuItem onClick={() => setRoleFilter("all")}>All Roles</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setRoleFilter("admin")}>Admin</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setRoleFilter("moderator")}>Moderator</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setRoleFilter("member")}>Member</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -336,7 +342,14 @@ export default function UserSearch({ currentUserId }: UserSearchProps) {
         </motion.div>
       )}
 
-      <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
+      <Tabs
+        defaultValue="all"
+        value={activeTab}
+        onValueChange={(value) => {
+          setActiveTab(value)
+          setPage(1) // Reset to first page when changing tabs
+        }}
+      >
         <TabsList className="bg-gray-800 border border-gray-700">
           <TabsTrigger value="all" className="data-[state=active]:bg-gray-700">
             All Users
@@ -351,7 +364,7 @@ export default function UserSearch({ currentUserId }: UserSearchProps) {
 
         <TabsContent value="all" className="mt-4">
           <UserList
-            users={filteredResults}
+            users={results}
             isLoading={isLoading}
             onConnect={handleConnect}
             selectedUsers={selectedUsers}
@@ -361,7 +374,7 @@ export default function UserSearch({ currentUserId }: UserSearchProps) {
 
         <TabsContent value="following" className="mt-4">
           <UserList
-            users={filteredResults}
+            users={results}
             isLoading={isLoading}
             onConnect={handleConnect}
             selectedUsers={selectedUsers}
@@ -372,7 +385,7 @@ export default function UserSearch({ currentUserId }: UserSearchProps) {
 
         <TabsContent value="suggested" className="mt-4">
           <UserList
-            users={filteredResults}
+            users={results}
             isLoading={isLoading}
             onConnect={handleConnect}
             selectedUsers={selectedUsers}
@@ -381,12 +394,41 @@ export default function UserSearch({ currentUserId }: UserSearchProps) {
           />
         </TabsContent>
       </Tabs>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-4">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="border-gray-700 text-gray-400 hover:text-white"
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-gray-400">
+              Page {page} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="border-gray-700 text-gray-400 hover:text-white"
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 interface UserListProps {
-  users: EnhancedUserResult[]
+  users: UserSearchResult[]
   isLoading: boolean
   onConnect: (userId: string) => void
   selectedUsers: string[]
@@ -465,7 +507,7 @@ function UserList({
           <div className="flex items-center gap-3">
             <div className="relative">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={user.avatarUrl || "/placeholder.svg"} />
+                <AvatarImage src={user.profilePicture || "/placeholder.svg"} />
                 <AvatarFallback className="bg-gray-700 text-gray-300">
                   {user.username.substring(0, 2).toUpperCase()}
                 </AvatarFallback>
@@ -482,7 +524,7 @@ function UserList({
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 <span>{user.connections} connections</span>
                 <span>•</span>
-                <span>Joined {new Date(user.joinedDate || "").toLocaleDateString()}</span>
+                <span>Joined {new Date(user.joinedDate).toLocaleDateString()}</span>
               </div>
             </div>
           </div>

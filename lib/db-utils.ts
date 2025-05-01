@@ -27,14 +27,23 @@ function convertDocument<T>(doc: unknown): T {
 }
 
 // Quest operations
+// Improve the getAllQuests function to handle empty results better
 export async function getAllQuests(): Promise<Quest[]> {
   try {
     await connectToDatabase()
     const quests = await QuestModel.find({}).sort({ createdAt: -1 }).lean()
+
+    // If no quests found, return an empty array immediately
+    if (!quests || quests.length === 0) {
+      console.log("No quests found in database")
+      return []
+    }
+
     return convertDocument<Quest[]>(quests)
   } catch (error) {
     console.error("Error fetching quests:", error)
-    throw error
+    // Return empty array instead of throwing to prevent loading issues
+    return []
   }
 }
 

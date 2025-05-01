@@ -73,18 +73,19 @@ export function GalxeUserClient({
     }
   }, [success])
 
+  // Modify the fetchQuestsData function to handle empty quests better
   const fetchQuestsData = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     setLoadingProgress(0)
     setIsRetrying(true)
 
-    // Set a maximum loading time of 15 seconds
+    // Set a maximum loading time of 10 seconds
     const maxLoadingTimeout = setTimeout(() => {
       setIsLoading(false)
       setError("Loading timed out. Please try again.")
       setIsRetrying(false)
-    }, 15000)
+    }, 10000)
 
     setLoadingTimeout(maxLoadingTimeout)
 
@@ -122,6 +123,7 @@ export function GalxeUserClient({
         throw new Error("Invalid response format from server")
       }
 
+      // Important: Check if we got a valid array response
       if (!Array.isArray(questsData)) {
         console.error("Invalid quests data format:", questsData)
         throw new Error("Invalid data format received from API")
@@ -129,8 +131,26 @@ export function GalxeUserClient({
 
       // Set quests regardless of whether there are active ones or not
       setQuests(questsData)
+      console.log("Quests loaded:", questsData.length)
 
-      // Fetch completions
+      // If we have no quests at all, stop here and show a message
+      if (questsData.length === 0) {
+        setSuccess("No quests available at the moment.")
+        // Clear all timeouts and intervals
+        if (progressInterval) clearInterval(progressInterval)
+        if (maxLoadingTimeout) clearTimeout(maxLoadingTimeout)
+        setLoadingTimeout(null)
+        setLoadingProgress(100)
+
+        // Finish loading
+        setTimeout(() => {
+          setIsLoading(false)
+          setIsRetrying(false)
+        }, 500)
+        return
+      }
+
+      // Fetch completions only if we have quests
       try {
         const completionsResponse = await fetch(`/api/users/${session.userId}/quest-completions`, {
           method: "GET",
@@ -143,7 +163,7 @@ export function GalxeUserClient({
           const completionsData = await completionsResponse.json()
           if (Array.isArray(completionsData)) {
             setCompletions(completionsData)
-            console.log("Loaded completions:", completionsData)
+            console.log("Loaded completions:", completionsData.length)
           }
         }
       } catch (completionError) {

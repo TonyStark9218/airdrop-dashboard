@@ -1,7 +1,8 @@
-import { getSessionAppRouter } from "@/lib/auth-utils-app";
+import { getSessionAppRouter } from "@/lib/auth-utils-app"
 import { getChatMessages, getChatRooms } from "@/lib/community-actions"
 import { redirect } from "next/navigation"
 import ChatRoom from "@/components/chat-room"
+import { SocketStatus } from "@/components/socket-status"
 
 interface ChatRoomPageProps {
   params: {
@@ -34,6 +35,10 @@ export default async function ChatRoomPage({ params }: ChatRoomPageProps) {
           <h1 className="text-2xl font-bold text-white">{currentRoom.name}</h1>
           <p className="text-gray-400">{currentRoom.description}</p>
         </div>
+        <div className="flex items-center">
+          <span className="text-gray-400">Socket Status:</span>
+          <SocketStatus userId={session.userId} username={session.username} />
+        </div>
       </div>
 
       <ChatRoom
@@ -45,4 +50,3 @@ export default async function ChatRoomPage({ params }: ChatRoomPageProps) {
     </div>
   )
 }
-

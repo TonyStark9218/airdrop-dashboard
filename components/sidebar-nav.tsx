@@ -66,7 +66,7 @@ export function SidebarNav({ username }: SidebarNavProps) {
       name: "Community",
       href: "/dashboard/community",
       icon: MessageSquare,
-      disabled: true,
+      disabled: false,
       disabledReason: "Under Maintenance",
     },
     {

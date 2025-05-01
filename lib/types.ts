@@ -67,10 +67,11 @@ export interface MessageAttachment {
   type: "image" | "video" | "document" | "audio" | "sticker"
   url: string
   name: string
+  filename?: string
   size?: number
   mimeType?: string
-  duration?: number // For audio/video in seconds
-  dimensions?: { width: number; height: number } // For images/videos
+  duration?: number
+  dimensions?: { width: number; height: number }
 }
 
 export interface MessageReaction {
@@ -99,6 +100,30 @@ export interface VoiceMessage {
   duration: number
   url: string
   waveform?: number[] // Array of amplitude values for waveform visualization
+}
+
+// Socket related types
+export type UserStatus = "online" | "offline" | "away"
+
+export interface SocketMessage extends MessageData {
+  status?: "sending" | "sent" | "delivered" | "read"
+}
+
+export interface SocketMessageUpdate {
+  messageId: string
+  update: {
+    content?: string
+    isDeleted?: boolean
+    reactions?: MessageReaction[]
+    deliveryStatus?: "sent" | "delivered" | "read"
+  }
+}
+
+export interface SocketTypingData {
+  userId: string
+  username: string
+  roomId: string
+  isTyping: boolean
 }
 
 // New Quest related interfaces
@@ -168,7 +193,20 @@ export interface ApiResponse<T> {
 }
 
 export interface MongooseLeanDocument {
-  _id: string;
-  __v: number;
-  [key: string]: unknown;
+  _id: string
+  __v: number
+  [key: string]: unknown
+}
+
+export interface SocketMessage extends MessageData {
+  deliveryStatus?: "sent" | "delivered" | "read"
+  voiceDuration?: number
+  isVoiceMessage?: boolean
+  replyToMessage?: MessageData | null
+  cryptoTransaction?: {
+    type: string
+    amount: number
+    status: string
+    timestamp: Date
+  }
 }
