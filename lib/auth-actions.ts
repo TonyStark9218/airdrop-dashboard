@@ -35,31 +35,24 @@ export async function registerUser(username: string, password: string) {
 
 export async function loginUser(username: string, password: string) {
   try {
-    await connectToDatabase()
+    // Dummy user data for testing
+    const dummyUser = { _id: "123456", username: "testuser", password: "testpass" }
 
-    // Find user
-    const user = await User.findOne({ username })
-    if (!user) {
-      return { success: false, message: "Invalid username or password" }
-    }
-
-    // Verify password
-    const isPasswordValid = await user.comparePassword(password)
-    if (!isPasswordValid) {
+    // Check if the provided username and password match the dummy user
+    if (username !== dummyUser.username || password !== dummyUser.password) {
       return { success: false, message: "Invalid username or password" }
     }
 
     // Create JWT token using jose
     const token = await new SignJWT({
-      userId: user._id.toString(),
-      username: user.username,
+      userId: dummyUser._id,
+      username: dummyUser.username,
     })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
       .setExpirationTime("7d")
       .sign(secretKey)
 
-    // Set cookie with more permissive settings for development
     cookies().set({
       name: TOKEN_NAME,
       value: token,
@@ -67,7 +60,7 @@ export async function loginUser(username: string, password: string) {
       path: "/",
       maxAge: 60 * 60 * 24 * 7, // 7 days
       sameSite: "lax", // Changed from "strict" to "lax" for better compatibility
-      secure: process.env.NODE_ENV === "production", // Only secure in production
+      secure: false, // Dev only
     })
 
     console.log("Login successful, token set")
@@ -83,4 +76,3 @@ export async function logoutUser() {
   cookies().delete(TOKEN_NAME)
   return { success: true }
 }
-
